@@ -6,12 +6,19 @@
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
+#include "jobs_parser.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
   if (kvs_init()) {
     fprintf(stderr, "Failed to initialize KVS\n");
     return 1;
+  }
+
+  if (argc > 1) {
+    list_dir(argv[1]);
+    kvs_terminate();
+    return 0;
   }
 
   while (1) {

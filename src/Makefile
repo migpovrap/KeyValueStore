@@ -12,8 +12,8 @@ endif
 
 all: kvs
 
-kvs: main.c constants.h operations.o parser.o kvs.o
-	$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o
+kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
+	$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c ${@:.o=.c}
@@ -31,3 +31,7 @@ rm:
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i *.c *.h
+
+test: kvs
+	./kvs ../jobs
+	@$(MAKE) -s rm
