@@ -13,6 +13,46 @@
 #define DT_REG 8
 #endif
 
+void parse_line(const char* line) {
+
+  // Modifiable copy of the line string
+  char line_copy[PIPE_BUF];
+  strncpy(line_copy, line, PIPE_BUF);
+  line_copy[PIPE_BUF - 1] = '\0'; // Makes sure that the new string is null-terminated
+
+  char *command = strtok(line_copy, " ");
+  char *command_args = strtok(NULL, " ");
+
+  if (strcmp(command, "WRITE") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  }  else if (strcmp(command, "READ") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  } else if (strcmp(command, "DELETE") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  } else if (strcmp(command, "SHOW") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  } else if (strcmp(command, "WAIT") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  } else if (strcmp(command, "BACKUP") == 0) {
+
+    printf("%s %s\n", command, command_args);
+
+  } else {
+    fprintf(stderr, "Unknow command\n");
+  }
+}
+
+
 void read_file(char *file_name_path) {
   int fd = open(file_name_path, O_RDONLY);
 
@@ -20,26 +60,18 @@ void read_file(char *file_name_path) {
     perror("Failed to open job file.");
     return;
   }
+  FILE *fp = fdopen(fd, "r");
+  char *line = NULL;
+  size_t len = 0;
 
-  char buffer[PIPE_BUF];
-  ssize_t read_bytes;
-
-  while((read_bytes = read(fd, buffer, sizeof(buffer) -1 )) > 0) {
-    buffer[read_bytes] = '\0';
-    char *line = strtok(buffer, "\n");
-    while ((line != NULL)) {
-      
-      printf("Processing line: %s\n", line);
-      line = strtok(NULL, "\n");
-    }
+  while (getline(&line, &len , fp) != -1) {
+    parse_line(line);
   }
-
-  if (read_bytes == -1) {
-    perror("Failed to read job file.");
-  }
-
+  free(line);
+  fclose(fp);
   close(fd);
 }
+
 
 void list_dir(char *path) {
   DIR *dir = opendir(path);
@@ -60,4 +92,3 @@ void list_dir(char *path) {
   
   closedir(dir);
 }
-
