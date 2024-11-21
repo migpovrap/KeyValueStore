@@ -4,39 +4,44 @@
 #include <stddef.h>
 
 /// Initializes the KVS state.
+/// @param fd the file descrpitor to write to
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.
-int kvs_init();
+int kvs_init(int fd);
 
 /// Destroys the KVS state.
+/// @param fd the file descrpitor to write to
 /// @return 0 if the KVS state was terminated successfully, 1 otherwise.
-int kvs_terminate();
+int kvs_terminate(int fd);
 
 /// Writes a key value pair to the KVS. If key already exists it is updated.
 /// @param num_pairs Number of pairs being written.
 /// @param keys Array of keys' strings.
 /// @param values Array of values' strings.
+/// @param fd the file descrpitor to write to
 /// @return 0 if the pairs were written successfully, 1 otherwise.
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE]);
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int fd);
 
 /// Reads values from the KVS.
 /// @param num_pairs Number of pairs to read.
 /// @param keys Array of keys' strings.
-/// @param fd File descriptor to write the (successful) output.
+/// @param fd the file descrpitor to write to
 /// @return 0 if the key reading, 1 otherwise.
-int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE]);
+int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 
 /// Deletes key value pairs from the KVS.
 /// @param num_pairs Number of pairs to read.
 /// @param keys Array of keys' strings.
+/// @param fd the file descrpitor to write to
 /// @return 0 if the pairs were deleted successfully, 1 otherwise.
-int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE]);
+int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 
 /// Writes the state of the KVS.
-/// @param fd File descriptor to write the output.
-void kvs_show();
+/// @param fd the file descrpitor to write to
+void kvs_show(int fd);
 
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file
+/// @param fd the file descrpitor to write to
 /// @return 0 if the backup was successful, 1 otherwise.
 int kvs_backup();
 

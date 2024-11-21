@@ -13,4 +13,4 @@ DELETE [c1,chaveAleatoria]
 #Espera de um segundo
 WAIT 1000
 # Impressão de toda a tabela
-SHOW 
+SHOW

@@ -10,14 +10,14 @@
 
 int main(int argc, char *argv[]) {
 
-  if (kvs_init()) {
+  if (kvs_init(STDERR_FILENO)) {
     fprintf(stderr, "Failed to initialize KVS\n");
     return 1;
   }
 
   if (argc > 1) {
     list_dir(argv[1]);
-    kvs_terminate();
+    kvs_terminate(STDERR_FILENO);
     return 0;
   }
 
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        if (kvs_write(num_pairs, keys, values)) {
+        if (kvs_write(num_pairs, keys, values, STDERR_FILENO)) {
           fprintf(stderr, "Failed to write pair\n");
         }
 
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        if (kvs_read(num_pairs, keys)) {
+        if (kvs_read(num_pairs, keys, STDOUT_FILENO)) {
           fprintf(stderr, "Failed to read pair\n");
         }
         break;
@@ -65,14 +65,14 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        if (kvs_delete(num_pairs, keys)) {
+        if (kvs_delete(num_pairs, keys, STDERR_FILENO)) {
           fprintf(stderr, "Failed to delete pair\n");
         }
         break;
 
       case CMD_SHOW:
 
-        kvs_show();
+        kvs_show(STDOUT_FILENO);
         break;
 
       case CMD_WAIT:
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
         break;
 
       case EOC:
-        kvs_terminate();
+        kvs_terminate(STDERR_FILENO);
         return 0;
     }
   }
