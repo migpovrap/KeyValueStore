@@ -31,4 +31,4 @@ format:
 
 test: kvs
 	./kvs ../jobs
-	@$(MAKE) -s rm
+	@$(MAKE) -s clean

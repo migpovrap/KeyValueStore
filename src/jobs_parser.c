@@ -1,17 +1,58 @@
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <dirent.h>
-#include <string.h>
-#include <limits.h>
 #include "parser.h"
 #include "operations.h"
+#include "jobs_parser.h"
 
-// For some reason it doesnt import this from the
-#ifndef DT_REG
-#define DT_REG 8
-#endif
+
+void cmd_write(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput) {
+  size_t num_pairs;
+  num_pairs = parse_write(*jobfd, *keys, *values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0) {
+    fprintf(stderr, "Invalid command. See HELP for usage\n");
+  }
+
+  if (kvs_write(num_pairs, *keys, *values, *joboutput)) {
+    fprintf(stderr, "Failed to write pair\n");
+  }
+}
+
+void cmd_read(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput) {
+  size_t num_pairs;
+  num_pairs = parse_read_delete(*jobfd, *keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0) {
+    fprintf(stderr, "Invalid command. See HELP for usage\n");
+  }
+
+  if (kvs_read(num_pairs, *keys, *joboutput)) {
+    fprintf(stderr, "Failed to read pair\n");
+  }
+}
+
+void cmd_delete(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput) {
+  size_t num_pairs;
+  num_pairs = parse_read_delete(*jobfd, *keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0) {
+    fprintf(stderr, "Invalid command. See HELP for usage\n");
+  }
+
+  if (kvs_delete(num_pairs, *keys, *joboutput)) {
+    fprintf(stderr, "Failed to delete pair\n");
+  }
+}
+
+void cmd_wait(int *jobfd) {
+  unsigned int delay;
+  if (parse_wait(*jobfd, &delay, NULL) == -1) {
+    fprintf(stderr, "Invalid command. See HELP for usage\n");
+  }
+
+  if (delay > 0) {
+    fprintf(stderr, "Waiting...\n");
+    kvs_wait(delay);
+  }
+}
 
 void read_file(char *job_file_path) {
   int jobfd = open(job_file_path, O_RDONLY);
@@ -27,6 +68,7 @@ void read_file(char *job_file_path) {
   if (dot && strcmp(dot, ".job") == 0) {
     *dot = '\0';
   }
+  
   snprintf(jobout_file_path, sizeof(jobout_file_path), "%s.out", job_file_path);
 
   int joboutput = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -37,48 +79,20 @@ void read_file(char *job_file_path) {
 
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
-  unsigned int delay;
-  size_t num_pairs;
 
   enum Command cmd;
   while ((cmd = get_next(jobfd)) != EOC) {
     switch (cmd) {
       case CMD_WRITE:
-        num_pairs = parse_write(jobfd, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_write(num_pairs, keys, values, joboutput)) {
-          fprintf(stderr, "Failed to write pair\n");
-        }
-
+        cmd_write(&jobfd, &keys, &values, &joboutput);
         break;
 
       case CMD_READ:
-        num_pairs = parse_read_delete(jobfd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_read(num_pairs, keys, joboutput)) {
-          fprintf(stderr, "Failed to read pair\n");
-        }
+        cmd_read(&jobfd, &keys, &joboutput);
         break;
 
       case CMD_DELETE:
-        num_pairs = parse_read_delete(jobfd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_delete(num_pairs, keys, joboutput)) {
-          fprintf(stderr, "Failed to delete pair\n");
-        }
+        cmd_delete(&jobfd, &keys, &joboutput);
         break;
 
       case CMD_SHOW:
@@ -86,19 +100,10 @@ void read_file(char *job_file_path) {
         break;
 
       case CMD_WAIT:
-        if (parse_wait(jobfd, &delay, NULL) == -1) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (delay > 0) {
-          fprintf(stderr, "Waiting...\n");
-          kvs_wait(delay);
-        }
+        cmd_wait(&jobfd);
         break;
 
       case CMD_BACKUP:
-
         if (kvs_backup()) {
           fprintf(stderr, "Failed to perform backup.\n");
         }
@@ -113,7 +118,7 @@ void read_file(char *job_file_path) {
       case EOC:
         break;
     }
- }
+  }
   close(jobfd);
   close(joboutput);
 }
