@@ -22,9 +22,6 @@ run: kvs
 	@./kvs
 
 clean:
-	rm -f *.o kvs
-
-rm:
 	@rm -rf kvs.dSYM
 	@rm -f *.o kvs 
 
