@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        if (kvs_write(num_pairs, keys, values, STDERR_FILENO)) {
+        if (kvs_write(num_pairs, keys, values, STDOUT_FILENO)) {
           fprintf(stderr, "Failed to write pair\n");
         }
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        if (kvs_delete(num_pairs, keys, STDERR_FILENO)) {
+        if (kvs_delete(num_pairs, keys, STDOUT_FILENO)) {
           fprintf(stderr, "Failed to delete pair\n");
         }
         break;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       case CMD_HELP:
         printf( 
             "Available commands:\n"
-            "  WRITE [(key,value),(key2,value2),...]\n"
+            "  WRITE [(key,value)(key2,value2),...]\n"
             "  READ [key,key2,...]\n"
             "  DELETE [key,key2,...]\n"
             "  SHOW\n"

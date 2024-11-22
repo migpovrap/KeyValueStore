@@ -90,6 +90,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     } else {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,%s)", keys[i], result);
     }
+    free(result);
   }
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
   // Posix api call to write
@@ -108,13 +109,21 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     write(fd, buffer, offset);
     return 1;
   }
+  int aux = 0;
 
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,KVSMISSING)\n", keys[i]);
+      if (!aux) {
+        offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
+        aux = 1;
+      }
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,KVSMISSING)", keys[i]);
     }
   }
-
+  if (aux) {
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
+  }
+  // Posix api call to write
   write(fd, buffer, offset);
   return 0;
 }
