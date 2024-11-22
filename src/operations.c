@@ -148,7 +148,15 @@ int kvs_backup() {
   return 0;
 }
 
-void kvs_wait(unsigned int delay_ms) {
+void kvs_wait(unsigned int delay_ms, int fd) {
+  // Buffer memory allocation
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Waiting...\n");
+  write(fd, buffer, offset);
+  
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
+  
 }

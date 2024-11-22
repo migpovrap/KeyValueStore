@@ -82,8 +82,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (delay > 0) {
-          printf("Waiting...\n");
-          kvs_wait(delay);
+          kvs_wait(delay, STDOUT_FILENO);
         }
         break;
 

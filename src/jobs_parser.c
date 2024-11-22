@@ -42,15 +42,14 @@ void cmd_delete(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *
   }
 }
 
-void cmd_wait(int *jobfd) {
+void cmd_wait(int *jobfd, int *joboutput) {
   unsigned int delay;
   if (parse_wait(*jobfd, &delay, NULL) == -1) {
     fprintf(stderr, "Invalid command. See HELP for usage\n");
   }
 
   if (delay > 0) {
-    fprintf(stderr, "Waiting...\n");
-    kvs_wait(delay);
+    kvs_wait(delay, *joboutput);
   }
 }
 
@@ -100,7 +99,7 @@ void read_file(char *job_file_path) {
         break;
 
       case CMD_WAIT:
-        cmd_wait(&jobfd);
+        cmd_wait(&jobfd, &joboutput);
         break;
 
       case CMD_BACKUP:

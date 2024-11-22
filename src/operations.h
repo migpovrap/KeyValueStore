@@ -45,6 +45,7 @@ void kvs_wait_backup();
 
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
-void kvs_wait(unsigned int delay_ms);
+/// @param fd the file descrpitor to write to
+void kvs_wait(unsigned int delay_ms, int fd);
 
 #endif  // KVS_OPERATIONS_H

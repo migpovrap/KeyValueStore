@@ -61,6 +61,6 @@ void cmd_delete(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *
  * 
  * @param jobfd File descriptor of the .job file
  */
-void cmd_wait(int *jobfd);
+void cmd_wait(int *jobfd, int *joboutput);
 
 #endif
