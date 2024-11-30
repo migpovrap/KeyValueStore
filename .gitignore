@@ -53,3 +53,7 @@ dkms.conf
 
 # Ignore Mac OS files
 .DS_Store
+
+# Ignore Test outputs
+*.out
+*.bck

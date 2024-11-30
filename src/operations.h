@@ -35,17 +35,19 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 /// @param fd the file descrpitor to write to
 void kvs_show(int fd);
 
-/// Creates a backup of the KVS state and stores it in the correspondent
-/// backup file
-/// @return 0 if the backup was successful, 1 otherwise.
-int kvs_backup();
-
-/// Waits for the last backup to be called.
-void kvs_wait_backup();
-
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
 /// @param fd the file descrpitor to write to
 void kvs_wait(unsigned int delay_ms, int fd);
+
+/// Creates a backup of the KVS state and stores it in the correspondent
+/// backup file
+/// @return 0 if the backup was successful, 1 otherwise.
+int kvs_backup(int max_backups, int backupoutput, int joboutput);
+
+/// Waits for the last backup to be called.
+void kvs_wait_backup();
+
+
 
 #endif  // KVS_OPERATIONS_H

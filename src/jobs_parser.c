@@ -53,7 +53,13 @@ void cmd_wait(int *jobfd, int *joboutput) {
   }
 }
 
-void read_file(char *job_file_path) {
+void cmd_backup(int max_backups, int *backupoutput, int *joboutput) {
+  if (kvs_backup(max_backups, *backupoutput, *joboutput)) {
+    fprintf(stderr, "Failed to perform backup.\n");
+  }
+}
+
+void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passing in this function these value doesnt feel right ve Inês
   int jobfd = open(job_file_path, O_RDONLY);
 
   if (jobfd == -1) {
@@ -62,19 +68,32 @@ void read_file(char *job_file_path) {
   }
 
   char jobout_file_path[PATH_MAX];
-  // Removes the og file extension I dont like this code Ve Inês
+  char backupout_file_path[PATH_MAX];
+
+  //FIXME Removes the og file extension I dont like this code ve Inês
   char *dot = strrchr(job_file_path, '.');
   if (dot && strcmp(dot, ".job") == 0) {
     *dot = '\0';
   }
   
+  // A file path with the correct extension for each file needed
   snprintf(jobout_file_path, sizeof(jobout_file_path), "%s.out", job_file_path);
+  snprintf(backupout_file_path, sizeof(jobout_file_path), "%s.bck", job_file_path);
 
+  // Creates the file where the output will be written
   int joboutput = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (joboutput == -1) {
     fprintf(stderr, "Failed to create new file.");
     return;
   }
+
+  // Creates the file where the backup will be written
+  int backupoutput = open(backupout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (backupoutput == -1) {
+    fprintf(stderr, "Failed to create new backup file.");
+    return;
+  }
+
 
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
@@ -103,9 +122,7 @@ void read_file(char *job_file_path) {
         break;
 
       case CMD_BACKUP:
-        if (kvs_backup()) {
-          fprintf(stderr, "Failed to perform backup.\n");
-        }
+        cmd_backup(max_backups, &backupoutput, &joboutput);
         break;
 
       case CMD_INVALID:
@@ -122,7 +139,7 @@ void read_file(char *job_file_path) {
   close(joboutput);
 }
 
-void list_dir(char *path) {
+void list_dir(char *path, int max_backups) { //FIXME I dont like passing in this function these value doesnt feel right ve Inês
   DIR *dir = opendir(path);
 
   if (!dir) {
@@ -137,7 +154,7 @@ void list_dir(char *path) {
     char job_file_path[PATH_MAX];
     snprintf(job_file_path, sizeof(job_file_path), "%s/%s", path, entry->d_name);
     
-    read_file(job_file_path);
+    read_file(job_file_path, max_backups); //FIXME I dont like passing in this function these value doesnt feel right ve Inês
     }
   }
   closedir(dir);

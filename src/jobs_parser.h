@@ -18,15 +18,17 @@
  * @brief List all the files in a dir and for each .job call the read_file() function
  * 
  * @param path The path of the directory containing the job files can be releative or complete
+ * @param max_backups The maximun number of concurrent backups process
  */
-void list_dir(char *path);
+void list_dir(char *path, int max_backups);
 
 /**
  * @brief Reads the job file from the specified path.
  * 
  * @param job_file_path Complete path to the job file.
+ * @param max_backups The maximun number of concurrent backups process
  */
-void read_file(char *job_file_path);
+void read_file(char *job_file_path, int max_backups);
 
 /**
  * @brief Writes a command to the job file descriptor.
@@ -63,4 +65,12 @@ void cmd_delete(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *
  */
 void cmd_wait(int *jobfd, int *joboutput);
 
+/**
+ * @brief Calls the kvs_backup with the current backup and gives an error in case of failure
+ * 
+ * @param max_backups The maximun number of concurrent backups process
+ * @param backupoutput File descriptor of the .bck file
+ * @param joboutput File descriptor of the .job file
+ */
+void cmd_backup(int max_backups, int *backupoutput, int *joboutput);
 #endif

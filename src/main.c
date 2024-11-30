@@ -15,108 +15,25 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (argc > 1) {
-    list_dir(argv[1]);
+  //TODO Add type checks for the type of arguments (maybe can be done with some macros??)
+  if (argc == 3) {
+    int max_backups = atoi(argv[2]);
+    list_dir(argv[1], max_backups); //FIXME I dont like this way maybe some auxialiry functions or move some logic from job_parser to main or other files??
     kvs_terminate(STDERR_FILENO);
     return 0;
   }
 
-  while (1) {
-    char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
-    char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
-    unsigned int delay;
-    size_t num_pairs;
-
-    printf("> ");
-    fflush(stdout);
-
-    switch (get_next(STDIN_FILENO)) {
-      case CMD_WRITE:
-        num_pairs = parse_write(STDIN_FILENO, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_write(num_pairs, keys, values, STDOUT_FILENO)) {
-          fprintf(stderr, "Failed to write pair\n");
-        }
-
-        break;
-
-      case CMD_READ:
-        num_pairs = parse_read_delete(STDIN_FILENO, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_read(num_pairs, keys, STDOUT_FILENO)) {
-          fprintf(stderr, "Failed to read pair\n");
-        }
-        break;
-
-      case CMD_DELETE:
-        num_pairs = parse_read_delete(STDIN_FILENO, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-        if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (kvs_delete(num_pairs, keys, STDOUT_FILENO)) {
-          fprintf(stderr, "Failed to delete pair\n");
-        }
-        break;
-
-      case CMD_SHOW:
-
-        kvs_show(STDOUT_FILENO);
-        break;
-
-      case CMD_WAIT:
-        if (parse_wait(STDIN_FILENO, &delay, NULL) == -1) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
-          continue;
-        }
-
-        if (delay > 0) {
-          kvs_wait(delay, STDOUT_FILENO);
-        }
-        break;
-
-      case CMD_BACKUP:
-
-        if (kvs_backup()) {
-          fprintf(stderr, "Failed to perform backup.\n");
-        }
-        break;
-
-      case CMD_INVALID:
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
-        break;
-
-      case CMD_HELP:
-        printf( 
-            "Available commands:\n"
-            "  WRITE [(key,value)(key2,value2),...]\n"
-            "  READ [key,key2,...]\n"
-            "  DELETE [key,key2,...]\n"
-            "  SHOW\n"
-            "  WAIT <delay_ms>\n"
-            "  BACKUP\n" // Not implemented
-            "  HELP\n"
-        );
-
-        break;
-        
-      case CMD_EMPTY:
-        break;
-
-      case EOC:
-        kvs_terminate(STDERR_FILENO);
-        return 0;
-    }
+  if (argc < 3 && argc > 1) {
+    fprintf(stderr,
+      "Not enough arguments to start IST-KVS\n"
+      "The correct format is:\n"
+      "./%s <jobdir_file> <MAX_BACKUPS>\n", argv[0]);
+    return 0;
   }
+
+  fprintf(stderr,
+    "No arguments provided, cannot start IST-KVS\n"
+    "The correct format is:\n"
+    "./%s <jobdir_file> <MAX_BACKUPS>\n", argv[0]);
+  return 0;
 }
