@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 CC = gcc
 
 # Para mais informações sobre as flags de warning, consulte a informação adicional no lab_ferramentas
@@ -26,11 +27,23 @@ clean:
 	@rm -f *.o kvs 
 	@rm -f ../jobs/*.out
 	@rm -f ../jobs/*.bck
+	@rm -f ../tests-public/kvs
+	@rm -f ../tests-public/jobs/*.out
+	@rm -f ../tests-public/jobs/*.bck
+	@rm -f ../tests-public/jobs2/*/*.out
+	@rm -f ../tests-public/jobs2/*/*.bck
 
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i *.c *.h
 
-test: kvs
+test_manual_private: kvs
 	./kvs ../jobs
+	@$(MAKE) -s clean
+
+
+test_public: kvs
+	cp ./kvs ../tests-public/kvs
+	../tests-public/run_ex1.sh kvs
+	../tests-public/run_ex2.sh kvs
 	@$(MAKE) -s clean
