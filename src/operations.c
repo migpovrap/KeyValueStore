@@ -163,12 +163,36 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   
 }
 
-int kvs_backup(int max_backups, int backupoutput, int joboutput) {
-  char buffer[PIPE_BUF];
-  size_t buff_size = sizeof(buffer);
-  size_t offset = 0;
+void kvs_backup(int max_backups, int backupoutput) {
+  static int concurrent_backups = 0;
+  pid_t pid;
 
-  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "max_backups: %d, backupoutput: %d, joboutput: %d\n", max_backups, backupoutput, joboutput);
-  write(joboutput, buffer, offset);
-  return 0;
+  while (concurrent_backups >= max_backups) {
+    //FIXME When it needs to wait should we call kvs_wait that outputs (Waiting...) Check this Inês!
+    fprintf(stderr, "Reached the maximum of concurrent forks,  waiting for a fork to exit.\n"); //REMOVE
+    wait(NULL);
+    concurrent_backups--;
+  }
+
+  pid = fork();
+
+  if (pid == -1) {
+    // Fork cannot be created
+    perror("Error creating the fork");
+    exit(EXIT_FAILURE);
+  }
+
+  if (pid == 0) { // Only runs if the fork (child process was sucessfuly launched)
+    // This is the child process
+    printf("Fork launched new child process, performing backup.\n"); //REMOVE
+    kvs_show(backupoutput);
+    close(backupoutput);
+    printf("Backup completed, child process, terminated.\n"); //REMOVE
+    exit(EXIT_SUCCESS);
+  }
+
+  // This is the parent process
+  concurrent_backups++;
+  fprintf(stderr, "Process created a fork, return to read_file() function.\n"); //REMOVE
+  return; // Continues executing from the call function read_file()
 }

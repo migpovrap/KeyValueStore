@@ -53,29 +53,38 @@ void cmd_wait(int *jobfd, int *joboutput) {
   }
 }
 
-void cmd_backup(int max_backups, int *backupoutput, int *joboutput) {
-  if (kvs_backup(max_backups, *backupoutput, *joboutput)) {
-    fprintf(stderr, "Failed to perform backup.\n");
-  }
-}
-
-void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passing max_backups here. Inês
-  int jobfd = open(job_file_path, O_RDONLY);
-
-  if (jobfd == -1) {
-    fprintf(stderr, "Failed to open job file.");
+void cmd_backup(int max_backups, int *backup_counter, char *job_file_path) {
+  char backupout_file_path[PATH_MAX];
+  snprintf(backupout_file_path, sizeof(backupout_file_path), "%s-%d.bck", job_file_path, *backup_counter);
+  fprintf(stderr, "Creating backup file: %s\n", backupout_file_path);
+  // Creates the file where the backup will be written
+  int backupoutputfd = open(backupout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (backupoutputfd == -1) {
+    fprintf(stderr, "Failed to create new backup file.\n");
     return;
   }
 
+  kvs_backup(max_backups, backupoutputfd);
+  (*backup_counter)++;
+}
+
+void read_file(char *job_file_path, int max_concurrent_backups) { //FIXME I dont like passing max_backups here. Inês
+  int jobfd = open(job_file_path, O_RDONLY);
+
+  if (jobfd == -1) {
+    fprintf(stderr, "Failed to open job file.\n");
+    return;
+  }
+
+  int backup_counter = 1;
+
   char jobout_file_path[PATH_MAX];
-  char backupout_file_path[PATH_MAX];
 
   job_file_path[strlen(job_file_path) - 4] = '\0';
   
-  // A file path with the correct extension for each file needed
+  // File path with the correct extension for the output file
   snprintf(jobout_file_path, sizeof(jobout_file_path), "%s.out", job_file_path);
-  snprintf(backupout_file_path, sizeof(jobout_file_path), "%s.bck", job_file_path);
-
+  
   // Creates the file where the output will be written
   int joboutputfd = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (joboutputfd == -1) {
@@ -83,14 +92,7 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
     return;
   }
 
-  // Creates the file where the backup will be written
-  int backupoutputfd = open(backupout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (backupoutputfd == -1) {
-    fprintf(stderr, "Failed to create new backup file.");
-    return;
-  }
-
-
+  fprintf(stderr, "Reading job: %s\n", job_file_path); //REMOVE
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
 
@@ -98,31 +100,37 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   while ((cmd = get_next(jobfd)) != EOC) {
     switch (cmd) {
       case CMD_WRITE:
+        fprintf(stderr, "Executing command: CMD_WRITE\n"); //REMOVE
         cmd_write(&jobfd, &keys, &values, &joboutputfd);
         break;
 
       case CMD_READ:
+        fprintf(stderr, "Executing command: CMD_READ\n"); //REMOVE
         cmd_read(&jobfd, &keys, &joboutputfd);
         break;
 
       case CMD_DELETE:
+        fprintf(stderr, "Executing command: CMD_DELETE\n"); //REMOVE
         cmd_delete(&jobfd, &keys, &joboutputfd);
         break;
 
       case CMD_SHOW:
+        fprintf(stderr, "Executing command: CMD_SHOW\n"); //REMOVE
         kvs_show(joboutputfd);
         break;
 
       case CMD_WAIT:
+        fprintf(stderr, "Executing command: CMD_WAIT\n"); //REMOVE
         cmd_wait(&jobfd, &joboutputfd);
         break;
 
       case CMD_BACKUP:
-        cmd_backup(max_backups, &backupoutputfd, &joboutputfd);
+        fprintf(stderr, "Executing command: CMD_BACKUP\n"); //REMOVE
+        cmd_backup(max_concurrent_backups, &backup_counter, job_file_path);
         break;
 
       case CMD_INVALID:
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
+        fprintf(stderr, "Invalid command. See HELP for usage\n"); //REMOVE
         break;
 
       case CMD_HELP:
@@ -133,7 +141,6 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   }
   close(jobfd);
   close(joboutputfd);
-  close(backupoutputfd);
 }
 
 File_list *list_dir(char *path) {

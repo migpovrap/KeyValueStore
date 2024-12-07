@@ -76,5 +76,5 @@ void cmd_wait(int *jobfd, int *joboutput);
  * @param backupoutput File descriptor of the .bck file
  * @param joboutput File descriptor of the .job file
  */
-void cmd_backup(int max_backups, int *backupoutput, int *joboutput);
+void cmd_backup(int max_backups, int *backup_counter, char *job_file_path);
 #endif
