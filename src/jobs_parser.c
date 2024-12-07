@@ -81,15 +81,15 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   snprintf(backupout_file_path, sizeof(jobout_file_path), "%s.bck", job_file_path);
 
   // Creates the file where the output will be written
-  int joboutput = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (joboutput == -1) {
+  int joboutputfd = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (joboutputfd == -1) {
     fprintf(stderr, "Failed to create new file.");
     return;
   }
 
   // Creates the file where the backup will be written
-  int backupoutput = open(backupout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (backupoutput == -1) {
+  int backupoutputfd = open(backupout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (backupoutputfd == -1) {
     fprintf(stderr, "Failed to create new backup file.");
     return;
   }
@@ -102,27 +102,27 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   while ((cmd = get_next(jobfd)) != EOC) {
     switch (cmd) {
       case CMD_WRITE:
-        cmd_write(&jobfd, &keys, &values, &joboutput);
+        cmd_write(&jobfd, &keys, &values, &joboutputfd);
         break;
 
       case CMD_READ:
-        cmd_read(&jobfd, &keys, &joboutput);
+        cmd_read(&jobfd, &keys, &joboutputfd);
         break;
 
       case CMD_DELETE:
-        cmd_delete(&jobfd, &keys, &joboutput);
+        cmd_delete(&jobfd, &keys, &joboutputfd);
         break;
 
       case CMD_SHOW:
-        kvs_show(joboutput);
+        kvs_show(joboutputfd);
         break;
 
       case CMD_WAIT:
-        cmd_wait(&jobfd, &joboutput);
+        cmd_wait(&jobfd, &joboutputfd);
         break;
 
       case CMD_BACKUP:
-        cmd_backup(max_backups, &backupoutput, &joboutput);
+        cmd_backup(max_backups, &backupoutputfd, &joboutputfd);
         break;
 
       case CMD_INVALID:
@@ -136,7 +136,8 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
     }
   }
   close(jobfd);
-  close(joboutput);
+  close(joboutputfd);
+  close(backupoutputfd);
 }
 
 void list_dir(char *path, int max_backups) { //FIXME I dont like passing in this function these value doesnt feel right ve Inês
