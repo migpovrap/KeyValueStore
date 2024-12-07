@@ -22,25 +22,27 @@ kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 run: kvs
 	@./kvs
 
-clean:
-	@rm -rf kvs.dSYM
-	@rm -f *.o kvs 
+rm:
 	@rm -f ../jobs/*.out
 	@rm -f ../jobs/*.bck
-	@rm -f ../tests-public/kvs
 	@rm -f ../tests-public/jobs/*.out
 	@rm -f ../tests-public/jobs/*.bck
 	@rm -f ../tests-public/jobs2/*/*.out
 	@rm -f ../tests-public/jobs2/*/*.bck
+	@$(MAKE) -s clean
+
+clean:
+	@rm -f ../tests-public/kvs
+	@rm -rf kvs.dSYM
+	@rm -f *.o kvs
 
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i *.c *.h
 
 test_manual_private: kvs
-	./kvs ../jobs
+	./kvs ../jobs 1 1
 	@$(MAKE) -s clean
-
 
 test_public: kvs
 	cp ./kvs ../tests-public/kvs

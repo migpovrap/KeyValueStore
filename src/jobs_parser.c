@@ -70,11 +70,7 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   char jobout_file_path[PATH_MAX];
   char backupout_file_path[PATH_MAX];
 
-  //FIXME Removes the og file extension I dont like this code ve Inês
-  char *dot = strrchr(job_file_path, '.');
-  if (dot && strcmp(dot, ".job") == 0) {
-    *dot = '\0';
-  }
+  job_file_path[strlen(job_file_path) - 4] = '\0';
   
   // A file path with the correct extension for each file needed
   snprintf(jobout_file_path, sizeof(jobout_file_path), "%s.out", job_file_path);
@@ -152,10 +148,10 @@ void list_dir(char *path, int max_backups) { //FIXME I dont like passing in this
   while ((entry = readdir(dir)) != NULL) {
     if (entry->d_type == DT_REG && strstr(entry->d_name, ".job") != NULL) {
 
-    char job_file_path[PATH_MAX];
-    snprintf(job_file_path, sizeof(job_file_path), "%s/%s", path, entry->d_name);
+      char job_file_path[PATH_MAX];
+      snprintf(job_file_path, sizeof(job_file_path), "%s/%s", path, entry->d_name);
     
-    read_file(job_file_path, max_backups); //FIXME I dont like passing in this function these value doesnt feel right ve Inês
+      read_file(job_file_path, max_backups); //FIXME I dont like passing in this function these value doesnt feel right ve Inês
     }
   }
   closedir(dir);
