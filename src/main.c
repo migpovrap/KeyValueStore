@@ -20,8 +20,12 @@ int main(int argc, char *argv[]) {
     int max_threads = atoi(argv[3]);
     fprintf(stderr, "%d\n", max_threads); //FIXME Temp uses only for runnig test before multithread implementation
     int max_backups = atoi(argv[2]);
-    list_dir(argv[1], max_backups); //FIXME I dont like this way maybe some auxialiry functions or move some logic from job_parser to main or other files??
+    File_list *job_files_path = list_dir(argv[1]);
+    for (int i = 0; i < job_files_path->num_files; i++) {
+      read_file(job_files_path->path_job_files[i], max_backups);
+    }
     kvs_terminate(STDERR_FILENO);
+    free(job_files_path);
     return 0;
   }
 

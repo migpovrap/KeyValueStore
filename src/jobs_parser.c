@@ -59,7 +59,7 @@ void cmd_backup(int max_backups, int *backupoutput, int *joboutput) {
   }
 }
 
-void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passing in this function these value doesnt feel right ve Inês
+void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passing max_backups here. Inês
   int jobfd = open(job_file_path, O_RDONLY);
 
   if (jobfd == -1) {
@@ -136,23 +136,27 @@ void read_file(char *job_file_path, int max_backups) { //FIXME I dont like passi
   close(backupoutputfd);
 }
 
-void list_dir(char *path, int max_backups) { //FIXME I dont like passing in this function these value doesnt feel right ve Inês
+File_list *list_dir(char *path) {
   DIR *dir = opendir(path);
-
   if (!dir) {
     perror("Failed to open jobs dir.");
-    return;
+    return NULL;
   }
 
   struct dirent *entry;
+  File_list *jobfiles_list = malloc(sizeof(File_list));
+  jobfiles_list->num_files = 0;
+  jobfiles_list->path_job_files = NULL;
+  
   while ((entry = readdir(dir)) != NULL) {
     if (entry->d_type == DT_REG && strstr(entry->d_name, ".job") != NULL) {
-
-      char job_file_path[PATH_MAX];
-      snprintf(job_file_path, sizeof(job_file_path), "%s/%s", path, entry->d_name);
-    
-      read_file(job_file_path, max_backups); //FIXME I dont like passing in this function these value doesnt feel right ve Inês
+      char **temp = realloc(jobfiles_list->path_job_files, ((size_t)jobfiles_list->num_files + 1) * sizeof(char *));
+      jobfiles_list->path_job_files = temp;
+      jobfiles_list->path_job_files[jobfiles_list->num_files] = malloc(PATH_MAX * sizeof(char));
+      snprintf(jobfiles_list->path_job_files[jobfiles_list->num_files], PATH_MAX, "%s/%s", path, entry->d_name);
+      jobfiles_list->num_files++;
     }
   }
   closedir(dir);
+  return jobfiles_list;
 }

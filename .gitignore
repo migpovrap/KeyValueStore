@@ -58,5 +58,8 @@ dkms.conf
 *.out
 *.bck
 
-# VS code config
+# VSCode Config
 .vscode
+
+# Ignore Object files
+*.o

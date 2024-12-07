@@ -14,13 +14,17 @@
 #define DT_REG 8
 #endif
 
+typedef struct {
+    char **path_job_files;
+    int num_files;
+} File_list;
+
 /**
  * @brief List all the files in a dir and for each .job call the read_file() function
  * 
  * @param path The path of the directory containing the job files can be releative or complete
- * @param max_backups The maximun number of concurrent backups process
  */
-void list_dir(char *path, int max_backups);
+File_list *list_dir(char *path);
 
 /**
  * @brief Reads the job file from the specified path.
