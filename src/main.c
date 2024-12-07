@@ -23,9 +23,11 @@ int main(int argc, char *argv[]) {
     File_list *job_files_path = list_dir(argv[1]);
     for (int i = 0; i < job_files_path->num_files; i++) {
       read_file(job_files_path->path_job_files[i], max_backups);
+      free(job_files_path->path_job_files[i]);
     }
-    kvs_terminate(STDERR_FILENO);
+    free(job_files_path->path_job_files);
     free(job_files_path);
+    kvs_terminate(STDERR_FILENO);
     return 0;
   }
 

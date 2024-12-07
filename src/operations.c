@@ -164,44 +164,11 @@ void kvs_wait(unsigned int delay_ms, int fd) {
 }
 
 int kvs_backup(int max_backups, int backupoutput, int joboutput) {
-  static int current_backups = 0;
-  static pid_t pids[1000] = {0}; //TODO Use dynamic memory
-
-  // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
 
-  // Check to see if the running backups have completed
-  for (int i = 0; i < 1000; i++)
-    if (pids[i] != 0 && waitpid(pids[i], NULL, WNOHANG) != 0) {
-      pids[0] = 0;
-      current_backups--;
-    }
-
-    // If current backups limits is reached wait for them to fininsh
-    if (current_backups >= max_backups) {
-      kvs_wait(1000, joboutput);
-      return 1;
-    }
-
-    pid_t pid = fork();
-    if (pid == -1) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Error creating a process fork\n");
-      // Posix api call to write
-      write(joboutput, buffer, offset);
-      return 1;
-    } else if (pid == 0) {
-      // The new child process
-      kvs_show(backupoutput);
-    } else {
-    // Increase the child process count
-    for (int i = 0; i < 1000; i++)
-    if (pids[i] == 0) {
-      pids[0] = pid;
-      current_backups++;
-      break;
-    }
-  }
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "max_backups: %d, backupoutput: %d, joboutput: %d\n", max_backups, backupoutput, joboutput);
+  write(joboutput, buffer, offset);
   return 0;
 }
