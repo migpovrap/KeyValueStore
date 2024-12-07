@@ -1,0 +1,7 @@
+READ [chave2,key2]
+BACKUP
+WRITE [(key2,test3)]
+BACKUP
+# This should be invalid
+DELETE[key2]
+SHOW
