@@ -20,7 +20,7 @@ kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: kvs
-	@./kvs
+	@export MallocNanoZone=0 && ./kvs
 
 rm:
 	@rm -f ../jobs/*.out
@@ -41,7 +41,7 @@ format:
 	@clang-format -i *.c *.h
 
 test_manual_private: kvs
-	@./kvs ../jobs 1 1
+	@export MallocNanoZone=0 && ./kvs ../jobs 1 1
 	@$(MAKE) -s clean
 
 test_public: kvs
