@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
   }
 
   //TODO Add type checks for the type of arguments (maybe can be done with some macros??)
-  if (argc == 3) {
+  if (argc == 4) {
+    int max_threads = atoi(argv[3]);
     int max_backups = atoi(argv[2]);
     list_dir(argv[1], max_backups); //FIXME I dont like this way maybe some auxialiry functions or move some logic from job_parser to main or other files??
     kvs_terminate(STDERR_FILENO);

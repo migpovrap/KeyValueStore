@@ -5,13 +5,13 @@ if [ -z "$1" ]; then
 fi
 executable=$1
 
-test_dir="./jobs2"
-results_dir="./results2"
+test_dir="tests-public/jobs2"
+results_dir="tests-public/results2"
 
 # Run executable and check results
 for job_folder in "$test_dir"/*/; do
-    echo -e "\e[34mRunning executable: $executable $job_folder 2 \e[0m"
-    if ! ./"$executable" "$job_folder" 2; then
+    echo -e "\e[34mRunning executable: $executable $job_folder 1 2 \e[0m"
+    if ! ./"$executable" "$job_folder" 1 2; then
         echo -e "\e[31mExecutable failed\e[0m"
         exit 1
     fi
