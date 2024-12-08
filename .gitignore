@@ -61,5 +61,5 @@ dkms.conf
 # VSCode Config
 .vscode
 
-# Ignore Object files
-*.o
+# Ignore executables
+**/kvs
