@@ -21,6 +21,7 @@ typedef struct Job_data {
   char *job_file_path;
   int job_output_fd;
   int backup_counter;
+  int max_concurrent_backups;
   struct Job_data *next;
 } Job_data;
 

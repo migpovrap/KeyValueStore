@@ -8,11 +8,14 @@
 #include <pthread.h>
 #include "kvs.h"
 #include "constants.h"
+#include <pthread.h>
+
 
 static struct HashTable* kvs_table = NULL;
 
+//TODO Change this mutex to only lock each position in the hashtable not all the table (sync acess to hashtable)
 pthread_mutex_t kvs_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /// Calculates a timespec from a delay in milliseconds.
 /// @param delay_ms Delay in milliseconds.
@@ -191,10 +194,19 @@ void kvs_backup(int max_backups, int backupoutput) {
   static int concurrent_backups = 0;
   pid_t pid;
 
-  while (concurrent_backups >= max_backups) {
+  while (1) {
+    pthread_mutex_lock(&backup_mutex);
+    if (concurrent_backups < max_backups) {
+        pthread_mutex_unlock(&backup_mutex);
+        break;
+    }
+    pthread_mutex_unlock(&backup_mutex);
     fprintf(stderr, "Reached the maximum of concurrent forks,  waiting for a fork to exit.\n"); //REMOVE
     wait(NULL);
+
+    pthread_mutex_lock(&backup_mutex);
     --concurrent_backups;
+    pthread_mutex_unlock(&backup_mutex);
   }
 
   pid = fork();
@@ -213,7 +225,9 @@ void kvs_backup(int max_backups, int backupoutput) {
   }
 
   // This is the parent process
+  pthread_mutex_lock(&backup_mutex);
   ++concurrent_backups;
+  pthread_mutex_unlock(&backup_mutex);
   fprintf(stderr, "Process created a fork, return to read_file() function.\n"); //REMOVE
   return; // Continues executing from the call function read_file()
 }

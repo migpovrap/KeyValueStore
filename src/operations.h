@@ -3,11 +3,6 @@
 
 #include <stddef.h>
 
-typedef struct {
-    char *file_path;
-    int max_concurrent_backups;
-} ThreadArguments;
-
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.
 int kvs_init(int fd);

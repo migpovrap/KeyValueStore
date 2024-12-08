@@ -2,6 +2,7 @@
 #include "operations.h"
 #include "jobs_parser.h"
 
+//TODO Change all the functions to use the data struct and only pass pointers for it
 
 void cmd_write(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput) {
   size_t num_pairs;
@@ -63,8 +64,8 @@ void cmd_backup(int max_backups, int *backup_counter, char *job_file_path) {
     fprintf(stderr, "Failed to create new backup file.\n");
     return;
   }
-
-  kvs_backup(max_backups, backupoutputfd);
+  kvs_backup(max_backups, backupoutputfd); //FIXME Function as apparent memory leaks and needs mutex (program gets stuck here)
+  close(backupoutputfd);
   (*backup_counter)++;
 }
 
@@ -144,8 +145,8 @@ void read_file(char *job_file_path, int max_concurrent_backups) { //FIXME I dont
 }
 
 void *process_file(void *arg) {
-  ThreadArguments *thread_args = (ThreadArguments *)arg;
-  read_file(thread_args->file_path, thread_args->max_concurrent_backups);
+  Job_data *job_data = (Job_data *)arg;
+  read_file(job_data->job_file_path, job_data->max_concurrent_backups);
   return NULL;
 }
 
