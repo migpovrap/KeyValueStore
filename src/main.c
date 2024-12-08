@@ -28,26 +28,26 @@ int main(int argc, char *argv[]) {
 
   int thread_count = 0;
 
-  while (current_job != NULL) {
-    for (int i = 0; i < max_threads && current_job != NULL; i++) {
-      current_job->max_concurrent_backups = max_concurrent_backups;
-      int ret = pthread_create(&threads[i], NULL, process_file, (void *)current_job);
-      if (ret != 0) {
-        fprintf(stderr, "Error creating thread: %d\n", ret);
-        continue;
+    while (current_job != NULL) {
+      for (int i = 0; i < max_threads && current_job != NULL; i++) {
+        current_job->max_concurrent_backups = max_concurrent_backups;
+        int ret = pthread_create(&threads[i], NULL, process_file, (void *)current_job);
+        if (ret != 0) {
+          fprintf(stderr, "Error creating thread: %d\n", ret);
+          continue;
+        }
+        thread_count++;
+        current_job = current_job->next;
       }
-      thread_count++;
-      current_job = current_job->next;
-    }
 
-    for (int i = 0; i < thread_count; i++) {
-      int ret = pthread_join(threads[i], NULL);
-      if (ret != 0) {
-        fprintf(stderr, "Error joining thread: %d\n", ret);
+      for (int i = 0; i < thread_count; i++) {
+        int ret = pthread_join(threads[i], NULL);
+        if (ret != 0) {
+          fprintf(stderr, "Error joining thread: %d\n", ret);
+        }
       }
+      thread_count = 0; // Reset thread count for the next batch
     }
-    thread_count = 0; // Reset thread count for the next batch
-}
     
     clear_job_data_list(&job_files_list);
     free(job_files_list);

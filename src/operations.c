@@ -180,16 +180,6 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   
 }
 
-// Function used to verify the correct function of the fork and child process creation and execution
-void kvs_create_backup(int fd) {
-  struct timespec delay = delay_to_timespec(100);
-  nanosleep(&delay, NULL);
-  kvs_show(fd);
-  close(fd);
-  printf("Backup completed, child process, terminated.\n"); //REMOVE
-  return;
-}
-
 void kvs_backup(int max_backups, int backupoutput) {
   static int concurrent_backups = 0;
   pid_t pid;
@@ -220,7 +210,9 @@ void kvs_backup(int max_backups, int backupoutput) {
   if (pid == 0) { // Only runs if the fork (child process was sucessfuly launched)
     // This is the child process
     printf("Fork launched new child process, performing backup.\n"); //REMOVE
-    kvs_create_backup(backupoutput);
+    kvs_show(backupoutput);
+    close(backupoutput);
+    printf("Backup completed, child process, terminated.\n"); //REMOVE
     exit(EXIT_SUCCESS);
   }
 
