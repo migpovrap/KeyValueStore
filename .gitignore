@@ -55,11 +55,13 @@ dkms.conf
 .DS_Store
 
 # Ignore Test outputs
-*.out
 *.bck
 
 # VSCode Config
 .vscode
 
 # Ignore executables
-**/kvs
+kvs
+
+# Ignore diff files
+*.diff
