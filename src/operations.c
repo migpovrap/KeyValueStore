@@ -187,8 +187,8 @@ void kvs_backup(int max_backups, int backupoutput) {
   while (1) {
     pthread_mutex_lock(&backup_mutex);
     if (concurrent_backups < max_backups) {
-        pthread_mutex_unlock(&backup_mutex);
-        break;
+      pthread_mutex_unlock(&backup_mutex);
+      break;
     }
     pthread_mutex_unlock(&backup_mutex);
     fprintf(stderr, "Reached the maximum of concurrent forks,  waiting for a fork to exit.\n"); //REMOVE
