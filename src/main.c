@@ -24,11 +24,11 @@ int main(int argc, char *argv[]) {
     File_list *job_files_list = list_dir(argv[1]);
     Job_data *current_job = job_files_list->job_data;
     while (current_job != NULL) {
-      read_file(&current_job->job_file_path, max_concurrent_backups); // Here add thread creation, the kvs table needs to be synced
+      read_file(current_job->job_file_path, max_concurrent_backups); // Here add thread creation, the kvs table needs to be synced
       current_job = current_job->next;
     }
     
-    clear_job_data_list(job_files_list);
+    clear_job_data_list(&job_files_list);
     free(job_files_list);
     kvs_terminate(STDERR_FILENO);
     return 0;
