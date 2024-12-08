@@ -43,7 +43,7 @@ format:
 
 # Runs with a max of two forks and single threadhed
 test_private: kvs
-	@export MallocNanoZone=0 && ./kvs ../jobs 2 1 
+	@export MallocNanoZone=0 && ./kvs ../jobs 2 2 
 	@passed_tests=0; \
 	total_tests=0; \
 	for input in $(wildcard ../jobs/*.job); do \

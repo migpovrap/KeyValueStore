@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     ThreadArguments thread_args[max_threads];
 
     while (current_job != NULL) {
-      for (int i = 0; i < max_threads; i++) {
+      for (int i = 0; i < max_threads && current_job != NULL; i++) {
         thread_args[i].file_path = current_job->job_file_path;
         thread_args[i].max_concurrent_backups = max_concurrent_backups;
         pthread_create(&threads[i], NULL, process_file, &thread_args[i]);
