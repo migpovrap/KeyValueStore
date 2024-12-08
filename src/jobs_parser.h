@@ -37,6 +37,13 @@ typedef struct {
 File_list *list_dir(char *path);
 
 /**
+ * @brief Process the file and execute the commands in it
+ * 
+ * @param arg The file path and the max number of backups
+ */
+void *process_file(void *arg);
+
+/**
  * @brief Reads the job file from the specified path.
  * 
  * @param job_file_path Complete path to the job file.

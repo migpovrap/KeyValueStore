@@ -143,6 +143,12 @@ void read_file(char *job_file_path, int max_concurrent_backups) { //FIXME I dont
   close(joboutputfd);
 }
 
+void *process_file(void *arg) {
+  ThreadArguments *thread_args = (ThreadArguments *)arg;
+  read_file(thread_args->file_path, thread_args->max_concurrent_backups);
+  return NULL;
+}
+
 File_list *list_dir(char *path) {
   DIR *dir = opendir(path);
   if (!dir) {

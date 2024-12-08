@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "constants.h"
 #include "parser.h"
@@ -23,9 +24,20 @@ int main(int argc, char *argv[]) {
 
     File_list *job_files_list = list_dir(argv[1]);
     Job_data *current_job = job_files_list->job_data;
+    pthread_t threads[max_threads];
+    ThreadArguments thread_args[max_threads];
+
     while (current_job != NULL) {
-      read_file(current_job->job_file_path, max_concurrent_backups); // Here add thread creation, the kvs table needs to be synced
-      current_job = current_job->next;
+      for (int i = 0; i < max_threads; i++) {
+        thread_args[i].file_path = current_job->job_file_path;
+        thread_args[i].max_concurrent_backups = max_concurrent_backups;
+        pthread_create(&threads[i], NULL, process_file, &thread_args[i]);
+        current_job = current_job->next;
+      }
+
+      for (int i = 0; i < max_threads; i++) {
+        pthread_join(threads[i], NULL);
+      }
     }
     
     clear_job_data_list(&job_files_list);
