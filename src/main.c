@@ -21,15 +21,15 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "%d\n", max_threads); //FIXME Temp uses only for runnig test before multithread implementation
     int max_concurrent_backups = atoi(argv[2]);
 
-    File_list *job_files_path = list_dir(argv[1]);
-
-    for (int i = 0; i < job_files_path->num_files; i++) {
-      read_file(job_files_path->path_job_files[i], max_concurrent_backups);
-      free(job_files_path->path_job_files[i]);
+    File_list *job_files_list = list_dir(argv[1]);
+    Job_data *current_job = job_files_list->job_data;
+    while (current_job != NULL) {
+      read_file(&current_job->job_file_path, max_concurrent_backups); // Here add thread creation, the kvs table needs to be synced
+      current_job = current_job->next;
     }
     
-    free(job_files_path->path_job_files);
-    free(job_files_path);
+    clear_job_data_list(job_files_list);
+    free(job_files_list);
     kvs_terminate(STDERR_FILENO);
     return 0;
   }

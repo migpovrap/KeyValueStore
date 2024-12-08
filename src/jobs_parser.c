@@ -150,20 +150,45 @@ File_list *list_dir(char *path) {
     return NULL;
   }
 
-  struct dirent *entry;
-  File_list *jobfiles_list = malloc(sizeof(File_list));
-  jobfiles_list->num_files = 0;
-  jobfiles_list->path_job_files = NULL;
+  struct dirent *current_file;
+  File_list *job_files_list = malloc(sizeof(File_list));
+  job_files_list->num_files = 0;
   
-  while ((entry = readdir(dir)) != NULL) {
-    if (entry->d_type == DT_REG && strstr(entry->d_name, ".job") != NULL) {
-      char **temp = realloc(jobfiles_list->path_job_files, ((size_t)jobfiles_list->num_files + 1) * sizeof(char *));
-      jobfiles_list->path_job_files = temp;
-      jobfiles_list->path_job_files[jobfiles_list->num_files] = malloc(PATH_MAX * sizeof(char));
-      snprintf(jobfiles_list->path_job_files[jobfiles_list->num_files], PATH_MAX, "%s/%s", path, entry->d_name);
-      jobfiles_list->num_files++;
+  while ((current_file = readdir(dir)) != NULL) {
+    if (current_file->d_type == DT_REG && strstr(current_file->d_name, ".job") != NULL) {
+      Job_data *job_data = malloc(sizeof(Job_data));
+      size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
+      job_data->job_file_path = malloc(path_len * sizeof(char));
+      snprintf(*job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
+      add_job_data(job_files_list, job_data);
     }
   }
   closedir(dir);
-  return jobfiles_list;
+  return job_files_list;
+}
+
+void clear_job_data_list(File_list *job_files_list) {
+  if (job_files_list->job_data == NULL)
+    return;
+  Job_data* current_job = job_files_list->job_data;
+  while (current_job != NULL) {
+    Job_data* next_job = current_job->next;
+    free(current_job);
+    current_job = next_job;
+  }
+  job_files_list->job_data = NULL; //After it clears the linked list the head is set to null
+}
+
+void add_job_data(File_list *job_files_list, Job_data *new_job_data) {
+  if (job_files_list->job_data == NULL) {
+    job_files_list->job_data = new_job_data;
+  } else {
+    Job_data* current_job = job_files_list->job_data;
+    while (current_job->next != NULL) {
+      current_job = current_job->next;
+    }
+    current_job->next = new_job_data;
+  }
+  new_job_data->next = NULL;
+  job_files_list->num_files++;
 }

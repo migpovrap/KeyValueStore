@@ -15,8 +15,18 @@
 #endif
 
 typedef struct {
-    char **path_job_files;
-    int num_files;
+  int job_fd;
+  char key[MAX_WRITE_SIZE][MAX_STRING_SIZE];
+  char values[MAX_WRITE_SIZE][MAX_STRING_SIZE];
+  char **job_file_path;
+  int job_output_fd;
+  int backup_counter;
+  struct Job_data *next;
+} Job_data;
+
+typedef struct {
+  Job_data *job_data;
+  int num_files;
 } File_list;
 
 /**
@@ -77,4 +87,8 @@ void cmd_wait(int *jobfd, int *joboutput);
  * @param joboutput File descriptor of the .job file
  */
 void cmd_backup(int max_backups, int *backup_counter, char *job_file_path);
+
+void clear_job_data_list(File_list *job_files_list);
+void add_job_data(File_list *job_files_list, Job_data *new_job_data);
+
 #endif
