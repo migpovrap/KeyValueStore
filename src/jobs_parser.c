@@ -180,6 +180,7 @@ void clear_job_data_list(File_list** job_files_list) {
   Job_data* current_job = (*job_files_list)->job_data;
   while (current_job != NULL) {
     Job_data* next_job = current_job->next;
+    free(current_job->job_file_path);
     free(current_job);
     current_job = next_job;
   }
