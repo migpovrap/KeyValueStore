@@ -26,33 +26,20 @@ int main(int argc, char *argv[]) {
     Job_data *current_job = job_files_list->job_data;
     pthread_t threads[max_threads];
 
-  int thread_count = 0;
-
-  while (current_job != NULL) {
-    for (int i = 0; i < max_threads && current_job != NULL; i++) {
-      int result = pthread_create(&threads[i], NULL, process_file, (void *)current_job);
-      if (result != 0) {
-        fprintf(stderr, "Error creating thread: %d\n", result);
-        continue;
-      }
-      thread_count++;
+    for (int i = 0; i < max_threads && current_job != NULL; ++i) {
+      pthread_create(&threads[i], NULL, process_file, (void *)current_job);
       current_job = current_job->next;
     }
 
-    for (int i = 0; i < thread_count; i++) {
-      int result = pthread_join(threads[i], NULL);
-      if (result != 0) {
-        fprintf(stderr, "Error joining thread: %d\n", result);
-      }
+    for (int i = 0; i < max_threads; i++) {
+      pthread_join(threads[i], NULL); // Wait for the thread to terminate
     }
-    thread_count = 0; // Reset thread count for the next batch
-  }
 
-  clear_job_data_list(&job_files_list);
-  free(job_files_list);
-  kvs_terminate(STDERR_FILENO);
-  return 0;
-}
+    clear_job_data_list(&job_files_list);
+    free(job_files_list);
+    kvs_terminate(STDERR_FILENO);
+    return 0;
+  }
 
   if (argc < 2 || argc >= 4) {
     fprintf(stderr,

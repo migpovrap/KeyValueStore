@@ -17,6 +17,8 @@ typedef struct Job_data {
   char *job_file_path;
   int job_output_fd;
   int backup_counter;
+  int status;
+  pthread_mutex_t mutex;
   struct Job_data *next;
 } Job_data;
 
