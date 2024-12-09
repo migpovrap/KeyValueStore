@@ -1,8 +1,4 @@
-#include "parser.h"
-#include "operations.h"
 #include "jobs_parser.h"
-
-//TODO Change all the functions to use the data struct and only pass pointers for it
 
 void cmd_write(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
@@ -77,14 +73,12 @@ void read_file(Job_data* job_data) {
     return;
   }
 
-  job_data->backup_counter = 1;
-
   char jobout_file_path[PATH_MAX];
 
-  job_data->job_file_path[strlen(job_data->job_file_path) - 4] = '\0';
+  job_data->job_file_path[strlen(job_data->job_file_path) - 3] = '\0';
   
   // File path with the correct extension for the output file
-  snprintf(jobout_file_path, sizeof(jobout_file_path), "%s.out", job_data->job_file_path);
+  snprintf(jobout_file_path, sizeof(jobout_file_path), "%sout", job_data->job_file_path);
   
   // Creates the file where the output will be written
   job_data->job_output_fd = open(jobout_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -166,6 +160,7 @@ File_list *list_dir(char *path) {
     if (current_file->d_type == DT_REG && strstr(current_file->d_name, ".job") != NULL) {
       Job_data *job_data = malloc(sizeof(Job_data));
       job_data->next = NULL;
+      job_data->backup_counter = 1;
       size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
       job_data->job_file_path = malloc(path_len * sizeof(char));
       snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
@@ -186,12 +181,12 @@ void clear_job_data_list(File_list** job_files_list) {
     free(current_job);
     current_job = next_job;
   }
-  (*job_files_list)->job_data = NULL; //After it clears the linked list the head is set to null
+  (*job_files_list)->job_data = NULL; // After it clears the linked list the head is set to null
 }
 
 void add_job_data(File_list** job_files_list, Job_data* new_job_data) {
   if ((*job_files_list)->job_data == NULL) {
-      (*job_files_list)->job_data = new_job_data;
+    (*job_files_list)->job_data = new_job_data;
   } else {
     Job_data* current_job = (*job_files_list)->job_data;
     while (current_job->next != NULL) {

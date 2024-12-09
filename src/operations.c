@@ -1,14 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <limits.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <pthread.h>
-#include "kvs.h"
-#include "constants.h"
-#include <pthread.h>
+#include "operations.h"
 
 static struct HashTable* kvs_table = NULL;
 

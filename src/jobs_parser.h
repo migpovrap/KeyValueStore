@@ -9,7 +9,10 @@
 #include <dirent.h>
 #include <limits.h>
 
-// Fallback definition for DT_REG if not defined
+#include "operations.h"
+#include "parser.h"
+
+//TODO: Ask Daniel Reis how to get rid of this.
 #ifndef DT_REG
 #define DT_REG 8
 #endif
@@ -93,7 +96,19 @@ void cmd_wait(Job_data* job_data);
  */
 void cmd_backup(Job_data* job_data);
 
+/**
+ * @brief Clears the job data list.
+ * 
+ * @param job_files_list The list of job data
+ */
 void clear_job_data_list(File_list** job_files_list);
+
+/**
+ * @brief Adds a new job data to the list.
+ * 
+ * @param job_files_list The list of job data
+ * @param new_job_data The new job data to add
+ */
 void add_job_data(File_list** job_files_list, Job_data* new_job_data);
 
 #endif

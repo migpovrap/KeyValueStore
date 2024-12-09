@@ -5,6 +5,9 @@
 
 #include <stddef.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 
 typedef struct KeyNode {
     char *key;

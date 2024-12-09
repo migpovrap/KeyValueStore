@@ -2,6 +2,17 @@
 #define KVS_OPERATIONS_H
 
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <limits.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <pthread.h>
+
+#include "constants.h"
+#include "kvs.h"
 
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.

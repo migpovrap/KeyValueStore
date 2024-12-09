@@ -1,12 +1,5 @@
 #include "parser.h"
 
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "constants.h"
-
 static int read_string(int fd, char *buffer, size_t max) {
   ssize_t bytes_read;
   char ch;

@@ -2,6 +2,11 @@
 #define KVS_PARSER_H
 
 #include <stddef.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include "constants.h"
 
 enum Command {
@@ -14,7 +19,7 @@ enum Command {
   CMD_HELP,
   CMD_EMPTY,
   CMD_INVALID,
-  EOC  // End of commands
+  EOC // End of commands
 };
 
 /// Reads a line and returns the corresponding command.
