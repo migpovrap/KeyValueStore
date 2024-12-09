@@ -124,22 +124,60 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   write(fd, buffer, offset);
   return 0;
 }
-
 void kvs_show(int fd) {
+  //TODO The data that can be alter during its execution confirm with (Daniel Reis).
+  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER; // This function needs to take a sanpshot of the hashtable
   // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
 
+  pthread_mutex_lock(&kvs_show_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    pthread_mutex_lock(&kvs_table->kvs_mutex[i]);
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", keyNode->key, keyNode->value);
       keyNode = keyNode->next; // Move to the next node
     }
-    pthread_mutex_unlock(&kvs_table->kvs_mutex[i]);
   }
+  pthread_mutex_unlock(&kvs_show_mutex);
+  // Posix api call to write
+  write(fd, buffer, offset);
+}
+
+void kvs_show_backup(int fd) {
+  //TODO A thread safe version, used for backups (Maybe use the same for both things, confirm with Daniel Reis)
+  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER; // This function needs to take a sanpshot of the hashtable for the backup
+  // Buffer memory allocation
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+
+  pthread_mutex_lock(&kvs_show_mutex);
+  for (int i = 0; i < TABLE_SIZE; i++) {
+    KeyNode *keyNode = kvs_table->table[i];
+    while (keyNode != NULL) {
+      size_t len_key = strlen(keyNode -> key);
+      size_t len_value = strlen(keyNode -> value);
+      size_t line_len = len_key + len_value + 5; // For (, )\n
+
+      if (offset + line_len < buff_size) {
+        buffer[offset++] = '(';
+        memcpy(buffer + offset, keyNode -> key, len_key);
+        offset += len_key;
+        memcpy(buffer + offset, ', ', 2);
+        offset += 2;
+        memcpy(buffer + offset, keyNode -> value, len_value);
+        offset += len_value;
+        memcpy(buffer + offset, ')\n', 2);
+        offset += 2;
+        buffer[offset] = '\0';
+      }  
+      
+      keyNode = keyNode->next; // Move to the next node
+    }
+  }
+  pthread_mutex_unlock(&kvs_show_mutex);
   // Posix api call to write
   write(fd, buffer, offset);
 }

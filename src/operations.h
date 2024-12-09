@@ -56,4 +56,8 @@ void kvs_wait(unsigned int delay_ms, int fd);
 /// @return 0 if the backup was successful, 1 otherwise.
 void kvs_backup(int backupoutput);
 
+/// Writes the state of the KVS, but is thread-safe
+/// @param fd the file descrpitor to write to
+void kvs_show_backup(int fd);
+
 #endif  // KVS_OPERATIONS_H
