@@ -64,12 +64,12 @@ void cmd_backup(Job_data* job_data) {
     fprintf(stderr, "Failed to create new backup file.\n");
     return;
   }
-  kvs_backup(job_data->max_concurrent_backups, backupoutputfd); //FIXME Function as apparent memory leaks and needs mutex (program gets stuck here)
+  kvs_backup(backupoutputfd);
   close(backupoutputfd);
   job_data->backup_counter++;
 }
 
-void read_file(Job_data* job_data) { //FIXME I dont like passing max_backups here. Inês
+void read_file(Job_data* job_data) {
   job_data->job_fd = open(job_data->job_file_path, O_RDONLY);
 
   if (job_data->job_fd == -1) {

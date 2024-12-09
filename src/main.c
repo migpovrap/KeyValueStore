@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
 #include "jobs_parser.h"
+
+int max_concurrent_backups;
 
 int main(int argc, char *argv[]) {
 
@@ -19,7 +20,7 @@ int main(int argc, char *argv[]) {
   //TODO Add type checks for the type of arguments (maybe can be done with some macros??)
   if (argc == 4) {
     int max_threads = atoi(argv[3]);
-    int max_concurrent_backups = atoi(argv[2]);
+    max_concurrent_backups = atoi(argv[2]);
 
     File_list *job_files_list = list_dir(argv[1]);
     Job_data *current_job = job_files_list->job_data;
@@ -29,7 +30,6 @@ int main(int argc, char *argv[]) {
 
   while (current_job != NULL) {
     for (int i = 0; i < max_threads && current_job != NULL; i++) {
-      current_job->max_concurrent_backups = max_concurrent_backups;
       int result = pthread_create(&threads[i], NULL, process_file, (void *)current_job);
       if (result != 0) {
         fprintf(stderr, "Error creating thread: %d\n", result);

@@ -168,13 +168,14 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   
 }
 
-void kvs_backup(int max_backups, int backupoutput) {
+void kvs_backup(int backupoutput) {
   static int concurrent_backups = 0;
+  extern int max_concurrent_backups;
   pid_t pid;
 
   while (1) {
     pthread_mutex_lock(&backup_mutex);
-    if (concurrent_backups < max_backups) {
+    if (concurrent_backups < max_concurrent_backups) {
       pthread_mutex_unlock(&backup_mutex);
       break;
     }

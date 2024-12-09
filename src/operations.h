@@ -43,6 +43,6 @@ void kvs_wait(unsigned int delay_ms, int fd);
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file
 /// @return 0 if the backup was successful, 1 otherwise.
-void kvs_backup(int max_backups, int backupoutput);
+void kvs_backup(int backupoutput);
 
 #endif  // KVS_OPERATIONS_H
