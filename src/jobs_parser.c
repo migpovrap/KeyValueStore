@@ -1,5 +1,6 @@
 #include "jobs_parser.h"
 
+
 void cmd_write(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
   num_pairs = parse_write(job_data->job_fd, *keys, *values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
@@ -156,8 +157,9 @@ File_list *list_dir(char *path) {
   job_files_list->num_files = 0;
   job_files_list->job_data = NULL;
   
+  //TODO Add support to read nested folders in the job_dir
   while ((current_file = readdir(dir)) != NULL) {
-    if (current_file->d_type == DT_REG && strstr(current_file->d_name, ".job") != NULL) {
+    if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
       Job_data *job_data = malloc(sizeof(Job_data));
       job_data->next = NULL;
       job_data->backup_counter = 1;

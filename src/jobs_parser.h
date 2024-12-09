@@ -12,11 +12,6 @@
 #include "operations.h"
 #include "parser.h"
 
-//TODO: Ask Daniel Reis how to get rid of this.
-#ifndef DT_REG
-#define DT_REG 8
-#endif
-
 typedef struct Job_data {
   int job_fd;
   char *job_file_path;

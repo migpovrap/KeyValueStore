@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     }
     thread_count = 0; // Reset thread count for the next batch
   }
-  
+
   clear_job_data_list(&job_files_list);
   free(job_files_list);
   kvs_terminate(STDERR_FILENO);
