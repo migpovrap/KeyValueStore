@@ -10,11 +10,8 @@
 #include "constants.h"
 #include <pthread.h>
 
-
 static struct HashTable* kvs_table = NULL;
 
-//TODO Change this mutex to only lock each position in the hashtable not all the table (sync acess to hashtable)
-pthread_mutex_t kvs_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /// Calculates a timespec from a delay in milliseconds.
@@ -56,7 +53,6 @@ int kvs_terminate(int fd) {
 }
 
 int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int fd) {
-  pthread_mutex_lock(&kvs_mutex);
   // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
@@ -66,7 +62,6 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
     // Posix api call to write
     write(fd, buffer, offset);
-    pthread_mutex_unlock(&kvs_mutex);
     return 1;
   }
 
@@ -78,12 +73,10 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
 
   // Posix api call to write
   write(fd, buffer, offset);
-  pthread_mutex_unlock(&kvs_mutex);
   return 0;
 }
 
 int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  pthread_mutex_lock(&kvs_mutex);
   // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
@@ -92,7 +85,6 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   if (kvs_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
     write(fd, buffer, offset);
-    pthread_mutex_unlock(&kvs_mutex);
     return 1;
   }
 
@@ -109,12 +101,10 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
   // Posix api call to write
   write(fd, buffer, offset);
-  pthread_mutex_unlock(&kvs_mutex);
   return 0;
 }
 
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  pthread_mutex_lock(&kvs_mutex);
   // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
@@ -124,7 +114,6 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
     // Posix api call to write
     write(fd, buffer, offset);
-    pthread_mutex_unlock(&kvs_mutex);
     return 1;
   }
   int aux = 0;
@@ -143,12 +132,10 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   }
   // Posix api call to write
   write(fd, buffer, offset);
-  pthread_mutex_unlock(&kvs_mutex);
   return 0;
 }
 
 void kvs_show(int fd) {
-  pthread_mutex_lock(&kvs_mutex);
   // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
@@ -163,7 +150,6 @@ void kvs_show(int fd) {
   }
   // Posix api call to write
   write(fd, buffer, offset);
-  pthread_mutex_unlock(&kvs_mutex);
 }
 
 void kvs_wait(unsigned int delay_ms, int fd) {

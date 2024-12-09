@@ -16,8 +16,6 @@
 
 typedef struct Job_data {
   int job_fd;
-  char key[MAX_WRITE_SIZE][MAX_STRING_SIZE];
-  char values[MAX_WRITE_SIZE][MAX_STRING_SIZE];
   char *job_file_path;
   int job_output_fd;
   int backup_counter;
@@ -50,7 +48,7 @@ void *process_file(void *arg);
  * @param job_file_path Complete path to the job file.
  * @param max_backups The maximun number of concurrent backups process
  */
-void read_file(char *job_file_path, int max_backups);
+void read_file(Job_data* job_data);
 
 /**
  * @brief Writes a command to the job file descriptor.
@@ -60,7 +58,7 @@ void read_file(char *job_file_path, int max_backups);
  * @param values Array of values to write.
  * @param joboutput File descriptor of the pretended output a .out file
  */
-void cmd_write(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput);
+void cmd_write(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
 
 /**
  * @brief Reads a command from the job file descriptor.
@@ -69,7 +67,7 @@ void cmd_write(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (
  * @param keys Array of keys to read.
  * @param joboutput File descriptor of the pretended output a .out file
  */
-void cmd_read(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput);
+void cmd_read(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
 
 /**
  * @brief Deletes a command from the job file descriptor.
@@ -78,14 +76,14 @@ void cmd_read(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *jo
  * @param keys Array of keys to delete.
  * @param joboutput File descriptor of the pretended output a .out file
  */
-void cmd_delete(int *jobfd, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], int *joboutput);
+void cmd_delete(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
 
 /**
  * @brief Waits for a command to complete on the job file descriptor.
  * 
  * @param jobfd File descriptor of the .job file
  */
-void cmd_wait(int *jobfd, int *joboutput);
+void cmd_wait(Job_data* job_data);
 
 /**
  * @brief Calls the kvs_backup with the current backup and gives an error in case of failure
@@ -94,7 +92,7 @@ void cmd_wait(int *jobfd, int *joboutput);
  * @param backupoutput File descriptor of the .bck file
  * @param joboutput File descriptor of the .job file
  */
-void cmd_backup(int max_backups, int *backup_counter, char *job_file_path);
+void cmd_backup(Job_data* job_data);
 
 void clear_job_data_list(File_list** job_files_list);
 void add_job_data(File_list** job_files_list, Job_data* new_job_data);
