@@ -143,14 +143,13 @@ void *process_file(void *arg) {
   Job_data *job_data = (Job_data *)arg;
   for (; job_data != NULL; job_data = job_data->next) {
     pthread_mutex_lock(&job_data->mutex);
-    if (job_data->status == 0) { // 0 means file needs to be read
-      job_data->status = -1; // -1 means in use
+    if (job_data->status == 0) { // 0 means unclaimed file
+      job_data->status = 1; // 1 means already claimed by a thread
       pthread_mutex_unlock(&job_data->mutex);
       read_file(job_data);
-      pthread_mutex_lock(&job_data->mutex);
-      job_data->status = 1; // 1 means done
+    } else {
+      pthread_mutex_unlock(&job_data->mutex);
     }
-    pthread_mutex_unlock(&job_data->mutex);
   }
   return NULL;
 }
@@ -174,6 +173,7 @@ File_list *list_dir(char *path) {
       job_data->next = NULL;
       job_data->backup_counter = 1;
       job_data->status = 0;
+      pthread_mutex_init(&job_data->mutex, NULL);
       size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
       job_data->job_file_path = malloc(path_len * sizeof(char));
       snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
