@@ -165,11 +165,11 @@ void kvs_show_backup(int fd) {
         buffer[offset++] = '(';
         memcpy(buffer + offset, keyNode -> key, len_key);
         offset += len_key;
-        memcpy(buffer + offset, ', ', 2);
+        memcpy(buffer + offset, ", ", 2);
         offset += 2;
         memcpy(buffer + offset, keyNode -> value, len_value);
         offset += len_value;
-        memcpy(buffer + offset, ')\n', 2);
+        memcpy(buffer + offset, ")\n", 2);
         offset += 2;
         buffer[offset] = '\0';
       }  
