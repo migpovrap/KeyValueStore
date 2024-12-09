@@ -142,11 +142,13 @@ void kvs_show(int fd) {
   size_t offset = 0;
 
   for (int i = 0; i < TABLE_SIZE; i++) {
+    pthread_mutex_lock(&kvs_table->kvs_mutex[i]);
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", keyNode->key, keyNode->value);
       keyNode = keyNode->next; // Move to the next node
     }
+    pthread_mutex_unlock(&kvs_table->kvs_mutex[i]);
   }
   // Posix api call to write
   write(fd, buffer, offset);

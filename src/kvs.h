@@ -14,7 +14,7 @@ typedef struct KeyNode {
 
 typedef struct HashTable {
     KeyNode *table[TABLE_SIZE];
-    pthread_mutex_t kvs_mutex;
+    pthread_mutex_t kvs_mutex[TABLE_SIZE];
 } HashTable;
 
 /// Creates a new event hash table.

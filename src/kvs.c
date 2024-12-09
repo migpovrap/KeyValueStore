@@ -24,21 +24,21 @@ struct HashTable* create_hash_table() {
   if (!ht) return NULL;
   for (int i = 0; i < TABLE_SIZE; i++) {
       ht->table[i] = NULL;
+      pthread_mutex_init(&ht->kvs_mutex[i], NULL);
   }
-  pthread_mutex_init(&ht->kvs_mutex, NULL);
   return ht;
 }
 
 int write_pair(HashTable *ht, const char *key, const char *value) {
     int index = hash(key);
     KeyNode *keyNode = ht->table[index];
-    pthread_mutex_lock(&ht->kvs_mutex);
+    pthread_mutex_lock(&ht->kvs_mutex[index]);
     // Search for the key node
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
             free(keyNode->value);
             keyNode->value = strdup(value);
-            pthread_mutex_unlock(&ht->kvs_mutex);
+            pthread_mutex_unlock(&ht->kvs_mutex[index]);
             return 0;
         }
         keyNode = keyNode->next; // Move to the next node
@@ -50,7 +50,7 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     keyNode->value = strdup(value); // Allocate memory for the value
     keyNode->next = ht->table[index]; // Link to existing nodes
     ht->table[index] = keyNode; // Place new key node at the start of the list
-    pthread_mutex_unlock(&ht->kvs_mutex);
+    pthread_mutex_unlock(&ht->kvs_mutex[index]);
     return 0;
 }
 
@@ -59,16 +59,16 @@ char* read_pair(HashTable *ht, const char *key) {
     KeyNode *keyNode = ht->table[index];
     char* value;
 
-    pthread_mutex_lock(&ht->kvs_mutex);
+    pthread_mutex_lock(&ht->kvs_mutex[index]);
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
             value = strdup(keyNode->value);
-            pthread_mutex_unlock(&ht->kvs_mutex);
+            pthread_mutex_unlock(&ht->kvs_mutex[index]);
             return value; // Return copy of the value if found
         }
         keyNode = keyNode->next; // Move to the next node
     }
-    pthread_mutex_unlock(&ht->kvs_mutex);
+    pthread_mutex_unlock(&ht->kvs_mutex[index]);
     return NULL; // Key not found
 }
 
@@ -77,7 +77,7 @@ int delete_pair(HashTable *ht, const char *key) {
     KeyNode *keyNode = ht->table[index];
     KeyNode *prevNode = NULL;
 
-    pthread_mutex_lock(&ht->kvs_mutex);
+    pthread_mutex_lock(&ht->kvs_mutex[index]);
     // Search for the key node
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
@@ -93,19 +93,19 @@ int delete_pair(HashTable *ht, const char *key) {
             free(keyNode->key);
             free(keyNode->value);
             free(keyNode); // Free the key node itself
-            pthread_mutex_unlock(&ht->kvs_mutex);
+            pthread_mutex_unlock(&ht->kvs_mutex[index]);
             return 0; // Exit the function
         }
         prevNode = keyNode; // Move prevNode to current node
         keyNode = keyNode->next; // Move to the next node
     }
-    pthread_mutex_unlock(&ht->kvs_mutex);
+    pthread_mutex_unlock(&ht->kvs_mutex[index]);
     return 1;
 }
 
 void free_table(HashTable *ht) {
-    pthread_mutex_lock(&ht->kvs_mutex);
     for (int i = 0; i < TABLE_SIZE; i++) {
+        pthread_mutex_lock(&ht->kvs_mutex[i]);
         KeyNode *keyNode = ht->table[i];
         while (keyNode != NULL) {
             KeyNode *temp = keyNode;
@@ -114,8 +114,8 @@ void free_table(HashTable *ht) {
             free(temp->value);
             free(temp);
         }
+        pthread_mutex_unlock(&ht->kvs_mutex[i]);
+        pthread_mutex_destroy(&ht->kvs_mutex[i]);
     }
-    pthread_mutex_unlock(&ht->kvs_mutex);
-    pthread_mutex_destroy(&ht->kvs_mutex);
     free(ht);
 }
