@@ -54,7 +54,7 @@ void kvs_wait(unsigned int delay_ms, int fd);
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file
 /// @return 0 if the backup was successful, 1 otherwise.
-void kvs_backup(int backupoutput);
+void kvs_backup(int backupoutput, pid_t *backup_fork);
 
 /// Writes the state of the KVS, but is thread-safe
 /// @param fd the file descrpitor to write to

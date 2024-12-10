@@ -196,7 +196,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   
 }
 
-void kvs_backup(int backupoutput) {
+void kvs_backup(int backupoutput, pid_t *backup_fork) {
   static int concurrent_backups = 0;
   extern int max_concurrent_backups;
   pid_t pid;
@@ -212,6 +212,7 @@ void kvs_backup(int backupoutput) {
     wait(NULL);
 
     pthread_mutex_lock(&backup_mutex);
+    backup_fork[concurrent_backups] = -1;
     --concurrent_backups;
     pthread_mutex_unlock(&backup_mutex);
   }
@@ -236,6 +237,7 @@ void kvs_backup(int backupoutput) {
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
   ++concurrent_backups;
+  backup_fork[concurrent_backups] = pid;
   pthread_mutex_unlock(&backup_mutex);
   fprintf(stderr, "Process created a fork, return to read_file() function.\n"); //REMOVE
   return; // Continues executing from the call function read_file()
