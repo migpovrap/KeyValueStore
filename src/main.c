@@ -1,12 +1,9 @@
 #include <limits.h>
+#include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <signal.h>
-#include "constants.h"
-#include "parser.h"
-#include "operations.h"
 #include "jobs_parser.h"
 
 int max_concurrent_backups;
@@ -35,7 +32,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < max_threads; i++) {
-      pthread_join(threads[i], NULL); // Wait for the thread to terminate
+      pthread_join(threads[i], NULL);
     }
 
     // Wait for all child processes to terminate

@@ -1,4 +1,5 @@
 #include "operations.h"
+#include "kvs.h"
 
 static struct HashTable* kvs_table = NULL;
 
@@ -21,7 +22,6 @@ int kvs_init(int fd) {
     write(fd, buffer, offset);
     return 1;
   }
-
   kvs_table = create_hash_table();
   return kvs_table == NULL; // Checks if the HashTable was created sucessfuly
 }
@@ -31,53 +31,41 @@ int kvs_terminate(int fd) {
     char buffer[PIPE_BUF];
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
-
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
-    
     write(fd, buffer, offset);
     return 1;
   }
-
   free_table(kvs_table);
   return 0;
 }
 
 int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int fd) {
-  // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-
   if (kvs_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
-    // Posix api call to write
     write(fd, buffer, offset);
     return 1;
   }
-
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     }
   }
-
-  // Posix api call to write
   write(fd, buffer, offset);
   return 0;
 }
 
 int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-
   if (kvs_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
-
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(kvs_table, keys[i]);
@@ -89,25 +77,20 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     free(result);
   }
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
-  // Posix api call to write
   write(fd, buffer, offset);
   return 0;
 }
 
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  
   if (kvs_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
-    // Posix api call to write
     write(fd, buffer, offset);
     return 1;
   }
   int aux = 0;
-
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
       if (!aux) {
@@ -120,39 +103,35 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   if (aux) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
   }
-  // Posix api call to write
   write(fd, buffer, offset);
   return 0;
 }
+
 void kvs_show(int fd) {
   //TODO The data that can be alter during its execution confirm with (Daniel Reis).
-  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER; // This function needs to take a sanpshot of the hashtable
-  // Buffer memory allocation
+  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER;
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-
   pthread_mutex_lock(&kvs_show_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", keyNode->key, keyNode->value);
-      keyNode = keyNode->next; // Move to the next node
+      keyNode = keyNode->next;
     }
   }
   pthread_mutex_unlock(&kvs_show_mutex);
-  // Posix api call to write
   write(fd, buffer, offset);
 }
 
 void kvs_show_backup(int fd) {
-  //TODO A thread safe version, used for backups (Maybe use the same for both things, confirm with Daniel Reis)
-  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER; // This function needs to take a sanpshot of the hashtable for the backup
-  // Buffer memory allocation
+  //FIXME A thread safe version, used for backups (Maybe use the same for both things, confirm with Daniel Reis)
+  // This function needs to take a sanpshot of the hashtable for the backup.
+  static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER;
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-
   pthread_mutex_lock(&kvs_show_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i];
@@ -160,7 +139,6 @@ void kvs_show_backup(int fd) {
       size_t len_key = strlen(keyNode -> key);
       size_t len_value = strlen(keyNode -> value);
       size_t line_len = len_key + len_value + 5; // For (, )\n
-
       if (offset + line_len < buff_size) {
         buffer[offset++] = '(';
         memcpy(buffer + offset, keyNode -> key, len_key);
@@ -173,27 +151,21 @@ void kvs_show_backup(int fd) {
         offset += 2;
         buffer[offset] = '\0';
       }  
-      
-      keyNode = keyNode->next; // Move to the next node
+      keyNode = keyNode->next;
     }
   }
   pthread_mutex_unlock(&kvs_show_mutex);
-  // Posix api call to write
   write(fd, buffer, offset);
 }
 
 void kvs_wait(unsigned int delay_ms, int fd) {
-  // Buffer memory allocation
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Waiting...\n");
-  // Posix api call to write
   write(fd, buffer, offset);
-  
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
-  
 }
 
 void kvs_backup(int backupoutput) {
@@ -201,7 +173,6 @@ void kvs_backup(int backupoutput) {
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
   pid_t pid;
-
   while (1) {
     pthread_mutex_lock(&backup_mutex);
     if (concurrent_backups < max_concurrent_backups) {
@@ -229,16 +200,10 @@ void kvs_backup(int backupoutput) {
 
   pid = fork();
 
-  if (pid == -1) {
-    // Fork cannot be created
-    perror("Error creating the fork");
-    exit(EXIT_FAILURE);
-  }
-
-  if (pid == 0) { // Only runs if the fork (child process was sucessfuly launched)
+  if (pid == 0) {
     // This is the child process
     printf("Fork launched new child process, performing backup.\n"); //REMOVE
-    kvs_show(backupoutput);
+    kvs_show_backup(backupoutput);
     close(backupoutput);
     printf("Backup completed, child process, terminated.\n"); //REMOVE
     exit(EXIT_SUCCESS);
