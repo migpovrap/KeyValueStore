@@ -36,6 +36,15 @@ typedef struct {
 File_list *list_dir(char *path);
 
 /**
+ * @brief Process the entry of the directory and add the job data to the list
+ * 
+ * @param job_files_list The list of job data
+ * @param current_file The current file to process
+ * @param path The path of the directory containing the job files can be releative or complete
+ */
+void process_entry(File_list **job_files_list, struct dirent *current_file, char *path);
+
+/**
  * @brief Process the file and execute the commands in it
  * 
  * @param arg The file path and the max number of backups

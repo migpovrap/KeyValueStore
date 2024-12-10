@@ -10,7 +10,7 @@ static int read_string(int fd, char *buffer, size_t max) {
     bytes_read = read(fd, &ch, 1);
 
     if (bytes_read <= 0) {
-        return -1;
+      return -1;
     }
 
     if (ch == ' ') {
@@ -20,12 +20,10 @@ static int read_string(int fd, char *buffer, size_t max) {
     if (ch == ',') {
       value = 0;
       break;
-    }
-    else if (ch == ')') {
+    } else if (ch == ')') {
       value = 1;
       break;
-    }
-    else if (ch == ']') {
+    } else if (ch == ']') {
       value = 2;
       break;
     }
@@ -90,7 +88,6 @@ enum Command get_next(int fd) {
         }
         return CMD_WRITE;
       }
-
       return CMD_WAIT;
 
     case 'R':
@@ -98,7 +95,6 @@ enum Command get_next(int fd) {
         cleanup(fd);
         return CMD_INVALID;
       }
-
       return CMD_READ;
 
     case 'D':
@@ -106,7 +102,6 @@ enum Command get_next(int fd) {
         cleanup(fd);
         return CMD_INVALID;
       }
-
       return CMD_DELETE;
 
     case 'S':
@@ -119,7 +114,6 @@ enum Command get_next(int fd) {
         cleanup(fd);
         return CMD_INVALID;
       }
-
       return CMD_SHOW;
 
     case 'B':
@@ -132,7 +126,6 @@ enum Command get_next(int fd) {
         cleanup(fd);
         return CMD_INVALID;
       }
-
       return CMD_BACKUP;
 
     case 'H':
@@ -145,7 +138,6 @@ enum Command get_next(int fd) {
         cleanup(fd);
         return CMD_INVALID;
       }
-
       return CMD_HELP;
 
     case '#':
@@ -171,7 +163,6 @@ int parse_pair(int fd, char *key, char *value) {
     cleanup(fd);
     return 0;
   }
-
   return 1;
 }
 

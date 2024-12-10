@@ -10,14 +10,14 @@
 #include <string.h>
 
 typedef struct KeyNode {
-    char *key;
-    char *value;
-    struct KeyNode *next;
+  char *key;
+  char *value;
+  struct KeyNode *next;
 } KeyNode;
 
 typedef struct HashTable {
-    KeyNode *table[TABLE_SIZE];
-    pthread_mutex_t kvs_mutex[TABLE_SIZE];
+  KeyNode *table[TABLE_SIZE];
+  pthread_mutex_t kvs_mutex[TABLE_SIZE];
 } HashTable;
 
 /// Creates a new event hash table.
@@ -46,6 +46,5 @@ int delete_pair(HashTable *ht, const char *key);
 /// Frees the hashtable.
 /// @param ht Hash table to be deleted.
 void free_table(HashTable *ht);
-
 
 #endif  // KVS_H

@@ -155,35 +155,43 @@ void *process_file(void *arg) {
 }
 
 File_list *list_dir(char *path) {
-  extern int max_concurrent_backups;
   DIR *dir = opendir(path);
-  if (!dir) {
-    perror("Failed to open jobs dir.");
-    return NULL;
-  }
-
   struct dirent *current_file;
   File_list *job_files_list = malloc(sizeof(File_list));
   job_files_list->num_files = 0;
   job_files_list->job_data = NULL;
   
-  //TODO Add support to read nested folders in the job_dir
   while ((current_file = readdir(dir)) != NULL) {
-    if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
-      Job_data *job_data = malloc(sizeof(Job_data));
-      job_data->next = NULL;
-      job_data->backup_counter = 1;
-      job_data->status = 0;
-      pthread_mutex_init(&job_data->mutex, NULL);
-      job_data->backup_fork = (pid_t *)malloc((size_t)max_concurrent_backups * sizeof(pid_t));
-      size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
-      job_data->job_file_path = malloc(path_len * sizeof(char));
-      snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
-      add_job_data(&job_files_list, job_data);
-    }
+    process_entry(&job_files_list, current_file, path);
   }
   closedir(dir);
   return job_files_list;
+}
+
+void process_entry(File_list **job_files_list, struct dirent *current_file, char *path) {
+  extern int max_concurrent_backups;
+  if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
+    Job_data *job_data = malloc(sizeof(Job_data));
+    job_data->next = NULL;
+    job_data->backup_counter = 1;
+    job_data->status = 0;
+    pthread_mutex_init(&job_data->mutex, NULL);
+    job_data->backup_fork = (pid_t *)malloc((size_t)max_concurrent_backups * sizeof(pid_t));
+    size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
+    job_data->job_file_path = malloc(path_len * sizeof(char));
+    snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
+    add_job_data(job_files_list, job_data);
+  } else if (current_file->d_type == 4 && strcmp(current_file->d_name, ".") != 0 && strcmp(current_file->d_name, "..") != 0) {
+    char nested_path[PATH_MAX];
+    snprintf(nested_path, sizeof(nested_path), "%s/%s", path, current_file->d_name);
+    DIR *nested_dir = opendir(nested_path);
+    if (nested_dir != NULL) {
+      while ((current_file = readdir(nested_dir)) != NULL) {
+        process_entry(job_files_list, current_file, nested_path);
+      }
+    }
+    closedir(nested_dir);
+  }
 }
 
 void clear_job_data_list(File_list** job_files_list) {
@@ -194,7 +202,7 @@ void clear_job_data_list(File_list** job_files_list) {
   while (current_job != NULL) {
     Job_data* next_job = current_job->next;
     free(current_job->job_file_path);
-    for (int i = 0; i < max_concurrent_backups; i++) {
+    for (int i = 0; i < max_concurrent_backups; ++i) {
       if (current_job->backup_fork[i] != -1) {
         waitpid(current_job->backup_fork[i], NULL, 0);
       }
@@ -215,6 +223,6 @@ void add_job_data(File_list** job_files_list, Job_data* new_job_data) {
     }
     current_job->next = new_job_data;
     new_job_data->next = NULL;
-    (*job_files_list)->num_files++;
   }
+  (*job_files_list)->num_files++;
 }
