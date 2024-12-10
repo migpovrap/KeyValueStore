@@ -61,7 +61,7 @@ void cmd_backup(Job_data* job_data) {
     fprintf(stderr, "Failed to create new backup file.\n");
     return;
   }
-  kvs_backup(backupoutputfd, job_data->backup_fork);
+  kvs_backup(backupoutputfd);
   close(backupoutputfd);
   job_data->backup_counter++;
 }
@@ -176,7 +176,6 @@ void process_entry(File_list **job_files_list, struct dirent *current_file, char
     job_data->backup_counter = 1;
     job_data->status = 0;
     pthread_mutex_init(&job_data->mutex, NULL);
-    job_data->backup_fork = (pid_t *)malloc((size_t)max_concurrent_backups * sizeof(pid_t));
     size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
     job_data->job_file_path = malloc(path_len * sizeof(char));
     snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
@@ -195,18 +194,12 @@ void process_entry(File_list **job_files_list, struct dirent *current_file, char
 }
 
 void clear_job_data_list(File_list** job_files_list) {
-  extern int max_concurrent_backups;
   if ((*job_files_list)->job_data == NULL)
     return;
   Job_data* current_job = (*job_files_list)->job_data;
   while (current_job != NULL) {
     Job_data* next_job = current_job->next;
     free(current_job->job_file_path);
-    for (int i = 0; i < max_concurrent_backups; ++i) {
-      if (current_job->backup_fork[i] != -1) {
-        waitpid(current_job->backup_fork[i], NULL, 0);
-      }
-    }
     free(current_job);
     current_job = next_job;
   }
