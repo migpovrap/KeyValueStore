@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "jobs_parser.h"
+#include "operations.h"
 
 int max_concurrent_backups;
 pid_t *backup_forks_pids;

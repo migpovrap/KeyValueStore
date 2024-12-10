@@ -1,4 +1,5 @@
 #include "jobs_parser.h"
+#include "operations.h"
 #include "parser.h"
 
 void cmd_write(Job_data* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
