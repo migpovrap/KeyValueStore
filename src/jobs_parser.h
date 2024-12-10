@@ -1,14 +1,14 @@
 #ifndef JOBS_PARSER_H
 #define JOBS_PARSER_H
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "constants.h"
 

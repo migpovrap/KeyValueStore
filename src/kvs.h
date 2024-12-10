@@ -3,10 +3,10 @@
 
 #define TABLE_SIZE 26
 
-#include <stddef.h>
-#include <pthread.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <pthread.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct KeyNode {
