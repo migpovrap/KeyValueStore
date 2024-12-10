@@ -180,7 +180,6 @@ void kvs_backup(int backup_output_fd, FileList* file_list) {
       break;
     }
     pthread_mutex_unlock(&backup_mutex);
-    fprintf(stderr, "Reached the maximum of concurrent forks,  waiting for a fork to exit.\n"); //REMOVE
     pid_t exited_pid = wait(NULL);
 
     pthread_mutex_lock(&backup_mutex);
@@ -202,15 +201,12 @@ void kvs_backup(int backup_output_fd, FileList* file_list) {
 
   if (pid == 0) {
     // This is the child process
-    printf("Fork launched new child process, performing backup.\n"); //REMOVE
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
-    printf("Backup completed, child process, terminated.\n"); //REMOVE
     // Free any dynamically allocated memory here
     free(backup_forks_pids);
     clear_file_list(&file_list);
     kvs_terminate(STDERR_FILENO);
-    printf("Child dynamic memory cleaned.\n"); //REMOVE
     exit(EXIT_SUCCESS);
   }
 
@@ -219,6 +215,5 @@ void kvs_backup(int backup_output_fd, FileList* file_list) {
   backup_forks_pids[concurrent_backups] = pid;
   ++concurrent_backups;
   pthread_mutex_unlock(&backup_mutex);
-  fprintf(stderr, "Process created a fork, return to read_file() function.\n"); //REMOVE
   return; // Continues executing from the call function read_file()
 }

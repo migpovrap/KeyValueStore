@@ -55,13 +55,8 @@ void cmd_wait(JobData* job_data) {
 void cmd_backup(JobData* job_data, FileList* file_list) {
   char backup_out_file_path[PATH_MAX];
   snprintf(backup_out_file_path, sizeof(backup_out_file_path), "%s-%d.bck", job_data->job_file_path, job_data->backup_counter);
-  fprintf(stderr, "Creating backup file: %s\n", backup_out_file_path);
   // Creates the file where the backup will be written
   int backup_output_fd = open(backup_out_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (backup_output_fd == -1) {
-    fprintf(stderr, "Failed to create new backup file.\n");
-    return;
-  }
   kvs_backup(backup_output_fd, file_list);
   close(backup_output_fd);
   job_data->backup_counter++;
@@ -89,7 +84,6 @@ void read_file(JobData* job_data, FileList* file_list) {
     return;
   }
 
-  fprintf(stderr, "Reading job: %s\n", job_data->job_file_path); //REMOVE
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
 
@@ -97,37 +91,30 @@ void read_file(JobData* job_data, FileList* file_list) {
   while ((cmd = get_next(job_data->job_fd)) != EOC) {
     switch (cmd) {
       case CMD_WRITE:
-        fprintf(stderr, "Executing command: CMD_WRITE\n"); //REMOVE
         cmd_write(job_data, &keys, &values);
         break;
 
       case CMD_READ:
-        fprintf(stderr, "Executing command: CMD_READ\n"); //REMOVE
         cmd_read(job_data, &keys);
         break;
 
       case CMD_DELETE:
-        fprintf(stderr, "Executing command: CMD_DELETE\n"); //REMOVE
         cmd_delete(job_data, &keys);
         break;
 
       case CMD_SHOW:
-        fprintf(stderr, "Executing command: CMD_SHOW\n"); //REMOVE
         kvs_show(job_data->job_output_fd);
         break;
 
       case CMD_WAIT:
-        fprintf(stderr, "Executing command: CMD_WAIT\n"); //REMOVE
         cmd_wait(job_data);
         break;
 
       case CMD_BACKUP:
-        fprintf(stderr, "Executing command: CMD_BACKUP\n"); //REMOVE
         cmd_backup(job_data, file_list);
         break;
 
       case CMD_INVALID:
-        fprintf(stderr, "Invalid command. See HELP for usage\n"); //REMOVE
         break;
 
       case CMD_HELP:

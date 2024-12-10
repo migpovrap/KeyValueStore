@@ -18,7 +18,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Failed to initialize KVS\n");
     return 1;
   }
-  //TODO Ensure atomic operations for all the code
   //TODO Add type checks for the type of arguments (maybe can be done with some macros??)
   if (argc == 4) {
     int max_threads = atoi(argv[3]);
@@ -37,15 +36,13 @@ int main(int argc, char *argv[]) {
       current_job = current_job->next;
     }
 
-    for (int i = 0; i < max_threads; i++) {
+    for (int i = 0; i < max_threads; ++i) {
       pthread_join(threads[i], NULL);
     }
 
     // Wait for all child processes to terminate
     for (int i = 0; i < max_concurrent_backups; i++) {
-      printf("Sending SIGTERM to fork: %d\n", backup_forks_pids[i]); // REMOVE
       kill(backup_forks_pids[i], SIGTERM);
-      printf("Waiting for fork: %d\n", backup_forks_pids[i]); // REMOVE
       waitpid(backup_forks_pids[i], NULL, 0);
     }
 
