@@ -7,6 +7,12 @@ CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L \
 		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
      -fsanitize=undefined -fsanitize=address
 
+# Flags for Valgrind
+VALGRIND_CFLAGS = -g -O0 -std=c17 -D_POSIX_C_SOURCE=200809L \
+		-Wall -Werror -Wextra \
+		-Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
+		-lpthread
+
 ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
 endif
@@ -14,7 +20,7 @@ endif
 all: kvs
 
 kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
-	@$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o
+	@$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o -lpthread
 
 %.o: %.c %.h
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
@@ -52,3 +58,7 @@ test_public: kvs
 	@../tests-public/run_ex1.sh kvs
 	@../tests-public/run_ex2.sh kvs
 	@$(MAKE) -s clean
+
+valgrind: CFLAGS=$(VALGRIND_CFLAGS)
+valgrind: kvs
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./kvs ../jobs 2 2

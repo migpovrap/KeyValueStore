@@ -117,4 +117,5 @@ void clear_job_data_list(FileList** job_files_list);
  */
 void add_job_data(FileList** job_files_list, JobData* new_job_data);
 
+void sort_keys(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs);
 #endif

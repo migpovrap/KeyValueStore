@@ -9,7 +9,7 @@ void cmd_write(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
   if (num_pairs == 0) {
     fprintf(stderr, "Invalid command. See HELP for usage\n");
   }
-
+  sort_keys(keys, num_pairs);
   if (kvs_write(num_pairs, *keys, *values, job_data->job_output_fd)) {
     fprintf(stderr, "Failed to write pair\n");
   }
@@ -22,7 +22,7 @@ void cmd_read(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) 
   if (num_pairs == 0) {
     fprintf(stderr, "Invalid command. See HELP for usage\n");
   }
-
+  sort_keys(keys, num_pairs);
   if (kvs_read(num_pairs, *keys, job_data->job_output_fd)) {
     fprintf(stderr, "Failed to read pair\n");
   }
@@ -35,7 +35,7 @@ void cmd_delete(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]
   if (num_pairs == 0) {
     fprintf(stderr, "Invalid command. See HELP for usage\n");
   }
-
+  sort_keys(keys, num_pairs);
   if (kvs_delete(num_pairs, *keys, job_data->job_output_fd)) {
     fprintf(stderr, "Failed to delete pair\n");
   }
@@ -148,6 +148,10 @@ void *process_file(void *arg) {
       job_data->status = 1; // 1 means already claimed by a thread
       pthread_mutex_unlock(&job_data->mutex);
       read_file(job_data);
+      close(job_data->job_fd);
+      close(job_data->job_output_fd);
+      job_data->job_fd = -1;
+      job_data->job_output_fd = -1;
     } else {
       pthread_mutex_unlock(&job_data->mutex);
     }
@@ -199,6 +203,7 @@ void clear_job_data_list(FileList** job_files_list) {
   JobData* current_job = (*job_files_list)->job_data;
   while (current_job != NULL) {
     JobData* next_job = current_job->next;
+    pthread_mutex_destroy(&current_job->mutex);
     free(current_job->job_file_path);
     free(current_job);
     current_job = next_job;
@@ -218,4 +223,18 @@ void add_job_data(FileList** job_files_list, JobData* new_job_data) {
     new_job_data->next = NULL;
   }
   (*job_files_list)->num_files++;
+}
+
+void sort_keys(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs) {
+  for (size_t i = 1; i < num_pairs; ++i) {
+    char temp[MAX_STRING_SIZE];
+    strcpy(temp, (*keys)[i]);
+    size_t j = i - 1;
+    
+    while (strcmp(temp, (*keys)[j]) < 0) {
+      strcpy((*keys)[j + 1], (*keys)[j]);
+      --j;
+    }
+    strcpy((*keys)[j + 1], temp);
+  }
 }

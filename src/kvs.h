@@ -8,16 +8,20 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+
 
 typedef struct KeyNode {
   char *key;
   char *value;
   struct KeyNode *next;
+  pthread_mutex_t node_mutex;
 } KeyNode;
 
 typedef struct HashTable {
   KeyNode *table[TABLE_SIZE];
-  pthread_mutex_t kvs_mutex[TABLE_SIZE];
+  pthread_mutex_t kvs_mutex;
+  pthread_mutex_t hash_mutex[TABLE_SIZE];
 } HashTable;
 
 /// Creates a new event hash table.
