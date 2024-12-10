@@ -1,5 +1,6 @@
 #include "operations.h"
 #include "kvs.h"
+#include "jobs_parser.h"
 
 static struct HashTable* kvs_table = NULL;
 
@@ -26,6 +27,7 @@ int kvs_init(int fd) {
   return kvs_table == NULL; // Checks if the HashTable was created sucessfuly
 }
 
+//TODO Use this fucntion to clean all the memory
 int kvs_terminate(int fd) {
   if (kvs_table == NULL) {
     char buffer[PIPE_BUF];
@@ -166,7 +168,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(int backup_output_fd) {
+void kvs_backup(int backup_output_fd, FileList* file_list) {
   static int concurrent_backups = 0;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
@@ -204,6 +206,11 @@ void kvs_backup(int backup_output_fd) {
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     printf("Backup completed, child process, terminated.\n"); //REMOVE
+    // Free any dynamically allocated memory here
+    free(backup_forks_pids);
+    clear_file_list(&file_list);
+    kvs_terminate(STDERR_FILENO);
+    printf("Child dynamic memory cleaned.\n"); //REMOVE
     exit(EXIT_SUCCESS);
   }
 

@@ -52,7 +52,7 @@ void cmd_wait(JobData* job_data) {
   }
 }
 
-void cmd_backup(JobData* job_data) {
+void cmd_backup(JobData* job_data, FileList* file_list) {
   char backup_out_file_path[PATH_MAX];
   snprintf(backup_out_file_path, sizeof(backup_out_file_path), "%s-%d.bck", job_data->job_file_path, job_data->backup_counter);
   fprintf(stderr, "Creating backup file: %s\n", backup_out_file_path);
@@ -62,12 +62,12 @@ void cmd_backup(JobData* job_data) {
     fprintf(stderr, "Failed to create new backup file.\n");
     return;
   }
-  kvs_backup(backup_output_fd);
+  kvs_backup(backup_output_fd, file_list);
   close(backup_output_fd);
   job_data->backup_counter++;
 }
 
-void read_file(JobData* job_data) {
+void read_file(JobData* job_data, FileList* file_list) {
   job_data->job_fd = open(job_data->job_file_path, O_RDONLY);
 
   if (job_data->job_fd == -1) {
@@ -123,7 +123,7 @@ void read_file(JobData* job_data) {
 
       case CMD_BACKUP:
         fprintf(stderr, "Executing command: CMD_BACKUP\n"); //REMOVE
-        cmd_backup(job_data);
+        cmd_backup(job_data, file_list);
         break;
 
       case CMD_INVALID:
@@ -141,13 +141,16 @@ void read_file(JobData* job_data) {
 }
 
 void *process_file(void *arg) {
-  JobData *job_data = (JobData *)arg;
+  ThreadArgs *args = (ThreadArgs *)arg;
+  JobData *job_data = args->current_job;
+  FileList *job_files_list = args->job_files_list;
+
   for (; job_data != NULL; job_data = job_data->next) {
     pthread_mutex_lock(&job_data->mutex);
     if (job_data->status == 0) { // 0 means unclaimed file
       job_data->status = 1; // 1 means already claimed by a thread
       pthread_mutex_unlock(&job_data->mutex);
-      read_file(job_data);
+      read_file(job_data, job_files_list);
       close(job_data->job_fd);
       close(job_data->job_output_fd);
       job_data->job_fd = -1;
@@ -197,7 +200,7 @@ void process_entry(FileList **job_files_list, struct dirent *current_file, char 
   }
 }
 
-void clear_job_data_list(FileList** job_files_list) {
+void clear_file_list(FileList** job_files_list) {
   if ((*job_files_list)->job_data == NULL)
     return;
   JobData* current_job = (*job_files_list)->job_data;
@@ -209,6 +212,9 @@ void clear_job_data_list(FileList** job_files_list) {
     current_job = next_job;
   }
   (*job_files_list)->job_data = NULL; // After it clears the linked list the head is set to null
+  (*job_files_list)->current_job = NULL;
+  free(*job_files_list);
+  *job_files_list = NULL;
 }
 
 void add_job_data(FileList** job_files_list, JobData* new_job_data) {

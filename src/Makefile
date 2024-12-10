@@ -61,4 +61,4 @@ test_public: kvs
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./kvs ../jobs 2 2
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 2 2

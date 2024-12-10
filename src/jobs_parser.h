@@ -24,8 +24,15 @@ typedef struct JobData {
 
 typedef struct {
   JobData* job_data;
+  JobData* current_job;
+  pthread_mutex_t current_job_mutex;
   int num_files;
 } FileList;
+
+typedef struct {
+    JobData *current_job;
+    FileList *job_files_list;
+} ThreadArgs;
 
 /**
  * @brief List all the files in a dir and for each .job call the read_file() function
@@ -56,7 +63,7 @@ void *process_file(void *arg);
  * @param job_file_path Complete path to the job file.
  * @param max_backups The maximun number of concurrent backups process
  */
-void read_file(JobData* job_data);
+void read_file(JobData* job_data, FileList* file_list);
 
 /**
  * @brief Writes a command to the job file descriptor.
@@ -100,14 +107,14 @@ void cmd_wait(JobData* job_data);
  * @param backupoutput File descriptor of the .bck file
  * @param joboutput File descriptor of the .job file
  */
-void cmd_backup(JobData* job_data);
+void cmd_backup(JobData* job_data, FileList* file_list);
 
 /**
  * @brief Clears the job data list.
  * 
  * @param job_files_list The list of job data
  */
-void clear_job_data_list(FileList** job_files_list);
+void clear_file_list(FileList** job_files_list);
 
 /**
  * @brief Adds a new job data to the list.
