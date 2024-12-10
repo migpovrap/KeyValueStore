@@ -108,17 +108,17 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
 }
 
 void kvs_show(int fd) {
-  //TODO The data that can be alter during its execution confirm with (Daniel Reis).
+  //FIXME The data that can be altered during its execution confirm with (Daniel Reis).
   static pthread_mutex_t kvs_show_mutex = PTHREAD_MUTEX_INITIALIZER;
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   pthread_mutex_lock(&kvs_show_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    KeyNode *keyNode = kvs_table->table[i];
-    while (keyNode != NULL) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", keyNode->key, keyNode->value);
-      keyNode = keyNode->next;
+    KeyNode *key_node = kvs_table->table[i];
+    while (key_node != NULL) {
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", key_node->key, key_node->value);
+      key_node = key_node->next;
     }
   }
   pthread_mutex_unlock(&kvs_show_mutex);
@@ -134,24 +134,24 @@ void kvs_show_backup(int fd) {
   size_t offset = 0;
   pthread_mutex_lock(&kvs_show_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    KeyNode *keyNode = kvs_table->table[i];
-    while (keyNode != NULL) {
-      size_t len_key = strlen(keyNode -> key);
-      size_t len_value = strlen(keyNode -> value);
+    KeyNode *key_node = kvs_table->table[i];
+    while (key_node != NULL) {
+      size_t len_key = strlen(key_node -> key);
+      size_t len_value = strlen(key_node -> value);
       size_t line_len = len_key + len_value + 5; // For (, )\n
       if (offset + line_len < buff_size) {
         buffer[offset++] = '(';
-        memcpy(buffer + offset, keyNode -> key, len_key);
+        memcpy(buffer + offset, key_node -> key, len_key);
         offset += len_key;
         memcpy(buffer + offset, ", ", 2);
         offset += 2;
-        memcpy(buffer + offset, keyNode -> value, len_value);
+        memcpy(buffer + offset, key_node -> value, len_value);
         offset += len_value;
         memcpy(buffer + offset, ")\n", 2);
         offset += 2;
         buffer[offset] = '\0';
       }  
-      keyNode = keyNode->next;
+      key_node = key_node->next;
     }
   }
   pthread_mutex_unlock(&kvs_show_mutex);
@@ -168,7 +168,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(int backupoutput) {
+void kvs_backup(int backup_output_fd) {
   static int concurrent_backups = 0;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
@@ -203,8 +203,8 @@ void kvs_backup(int backupoutput) {
   if (pid == 0) {
     // This is the child process
     printf("Fork launched new child process, performing backup.\n"); //REMOVE
-    kvs_show_backup(backupoutput);
-    close(backupoutput);
+    kvs_show_backup(backup_output_fd);
+    close(backup_output_fd);
     printf("Backup completed, child process, terminated.\n"); //REMOVE
     exit(EXIT_SUCCESS);
   }
