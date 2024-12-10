@@ -170,7 +170,6 @@ File_list *list_dir(char *path) {
 }
 
 void process_entry(File_list **job_files_list, struct dirent *current_file, char *path) {
-  extern int max_concurrent_backups;
   if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
     Job_data *job_data = malloc(sizeof(Job_data));
     job_data->next = NULL;
