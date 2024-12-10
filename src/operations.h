@@ -1,15 +1,15 @@
 #ifndef KVS_OPERATIONS_H
 #define KVS_OPERATIONS_H
 
+#include <limits.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <limits.h>
-#include <unistd.h>
 #include <sys/wait.h>
-#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "constants.h"
 

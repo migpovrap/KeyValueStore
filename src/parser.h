@@ -1,8 +1,8 @@
 #ifndef KVS_PARSER_H
 #define KVS_PARSER_H
 
-#include <stddef.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
