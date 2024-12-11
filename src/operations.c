@@ -201,7 +201,7 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
         for (int j = i; j < concurrent_backups - 1; ++j) {
           backup_forks_pids[j] = backup_forks_pids[j + 1];
         }
-        --concurrent_backups;
+        concurrent_backups--;
         break;
       }
     }
@@ -225,7 +225,7 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
   backup_forks_pids[concurrent_backups] = pid;
-  ++concurrent_backups;
+  concurrent_backups++;
   pthread_mutex_unlock(&backup_mutex);
   return; // Continues executing from the call function read_file()
 }
