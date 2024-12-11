@@ -21,7 +21,7 @@ struct HashTable* create_hash_table() {
     ht->table[i] = NULL;
     pthread_mutex_init(&ht->hash_mutex[i], NULL);
   }
-  pthread_mutex_init(&ht->kvs_mutex, NULL);
+  pthread_mutex_init(&ht->table_mutex, NULL);
   return ht;
 }
 
@@ -109,7 +109,7 @@ int delete_pair(HashTable *ht, const char *key) {
 }
 
 void free_table(HashTable *ht) {
-  pthread_mutex_lock(&ht->kvs_mutex);
+  pthread_mutex_lock(&ht->table_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = ht->table[i];
     while (key_node != NULL) {
@@ -122,7 +122,7 @@ void free_table(HashTable *ht) {
     }
     pthread_mutex_destroy(&ht->hash_mutex[i]);
   }
-  pthread_mutex_unlock(&ht->kvs_mutex);
-  pthread_mutex_destroy(&ht->kvs_mutex);
+  pthread_mutex_unlock(&ht->table_mutex);
+  pthread_mutex_destroy(&ht->table_mutex);
   free(ht);
 }

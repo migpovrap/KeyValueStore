@@ -69,8 +69,7 @@ static int read_uint(int fd, unsigned int *value, char *next) {
 
 static void cleanup(int fd) {
   char ch;
-  while (read(fd, &ch, 1) == 1 && ch != '\n')
-    ;
+  while (read(fd, &ch, 1) == 1 && ch != '\n');
 }
 
 enum Command get_next(int fd) {

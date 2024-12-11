@@ -12,113 +12,46 @@
 
 #include "constants.h"
 
-typedef struct JobData {
-  int job_fd;
+typedef struct Job {
   char *job_file_path;
+  int job_fd;
   int job_output_fd;
   int backup_counter;
-  int status;
-  pthread_mutex_t mutex;
-  struct JobData *next;
-} JobData;
+  struct Job *next;
+} Job;
 
-typedef struct {
-  JobData* job_data_start;
-  JobData* current_job;
+typedef struct JobQueue{
   int num_files;
-  pthread_mutex_t current_job_mutex;
-} JobsList;
+  Job* current_job;
+  Job* last_job;
+  pthread_mutex_t queue_mutex;
+} JobQueue;
 
 /**
- * @brief List all the files in a dir and for each .job call the read_file() function
+ * @brief Creates the job queue by reading entries from the specified directory.
  * 
- * @param path The path of the directory containing the job files can be releative or complete
+ * @param dir_path The path to the directory containing job entries.
+ * @return A pointer to the created JobQueue.
  */
-JobsList *list_dir(char *path);
+JobQueue *create_job_queue(char *dir_path);
 
 /**
- * @brief Process the entry of the directory and add the job data to the list
- * 
- * @param job_files_list The list of job data
- * @param current_file The current file to process
- * @param path The path of the directory containing the job files can be releative or complete
- */
-void process_entry(JobsList **job_files_list, struct dirent *current_file, char *path);
-
-/**
- * @brief Process the file and execute the commands in it
- * 
- * @param arg The file path and the max number of backups
+ * @brief Processes files from the job queue.
+ *
+ * This function is executed by a thread to process files from the job queue.
+ * It locks the queue mutex, retrieves the current job, and processes files
+ * until the queue is empty. The function reads files and processes jobs
+ * accordingly.
+ *
+ * @param arg A pointer to the job queue (JobQueue *).
  */
 void *process_file(void *arg);
 
 /**
- * @brief Reads the job file from the specified path.
+ * @brief Destroys the job queue.
  * 
- * @param job_file_path Complete path to the job file.
- * @param max_backups The maximun number of concurrent backups process
+ * @param queue The job queue to destroy.
  */
-void read_file(JobData* job_data, JobsList* file_list);
-
-/**
- * @brief Writes a command to the job file descriptor.
- * 
- * @param jobfd File descriptor of the .job file
- * @param keys Array of keys to write.
- * @param values Array of values to write.
- * @param joboutput File descriptor of the pretended output a .out file
- */
-void cmd_write(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
-
-/**
- * @brief Reads a command from the job file descriptor.
- * 
- * @param jobfd File descriptor of the .job file
- * @param keys Array of keys to read.
- * @param joboutput File descriptor of the pretended output a .out file
- */
-void cmd_read(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
-
-/**
- * @brief Deletes a command from the job file descriptor.
- * 
- * @param jobfd File descriptor of the .job file
- * @param keys Array of keys to delete.
- * @param joboutput File descriptor of the pretended output a .out file
- */
-void cmd_delete(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]);
-
-/**
- * @brief Waits for a command to complete on the job file descriptor.
- * 
- * @param jobfd File descriptor of the .job file
- */
-void cmd_wait(JobData* job_data);
-
-/**
- * @brief Calls the kvs_backup with the current backup and gives an error in case of failure
- * 
- * @param max_backups The maximun number of concurrent backups process
- * @param backupoutput File descriptor of the .bck file
- * @param joboutput File descriptor of the .job file
- */
-void cmd_backup(JobData* job_data, JobsList* file_list);
-
-/**
- * @brief Clears the job data list.
- * 
- * @param job_files_list The list of job data
- */
-void clear_file_list(JobsList** job_files_list);
-
-/**
- * @brief Adds a new job data to the list.
- * 
- * @param job_files_list The list of job data
- * @param new_job_data The new job data to add
- */
-void add_job_data(JobsList** job_files_list, JobData* new_job_data);
-
-void sort_keys_alphabetically(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs);
+void destroy_jobs_queue(JobQueue *queue);
 
 #endif

@@ -2,7 +2,7 @@
 #include "kvs.h"
 #include "jobs_parser.h"
 
-static struct HashTable* kvs_table = NULL;
+static struct HashTable* hash_table = NULL;
 
 pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -14,31 +14,30 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
 }
 
 int kvs_init(int fd) {
-  if (kvs_table != NULL) {
+  if (hash_table != NULL) {
     char buffer[PIPE_BUF];
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
     offset += (size_t)snprintf(buffer + offset, buff_size - offset,
-      "KVS state has already been initialized\n");
+    "KVS state has already been initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
-  kvs_table = create_hash_table();
-  return kvs_table == NULL; // Checks if the HashTable was created sucessfuly
+  hash_table = create_hash_table();
+  return hash_table == NULL; // Checks if the HashTable was created successfully
 }
 
-//TODO Use this fucntion to clean all the memory
 int kvs_terminate(int fd) {
-  if (kvs_table == NULL) {
+  if (hash_table == NULL) {
     char buffer[PIPE_BUF];
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
     offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-      "KVS state must be initialized\n");
+    "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
-  free_table(kvs_table);
+  free_table(hash_table);
   return 0;
 }
 
@@ -47,17 +46,16 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  if (kvs_table == NULL) {
+  if (hash_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-      "KVS state must be initialized\n");
+    "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
   for (size_t i = 0; i < num_pairs; i++)
-    if (write_pair(kvs_table, keys[i], values[i]) != 0)
+    if (write_pair(hash_table, keys[i], values[i]) != 0)
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-        "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
-
+      "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
   write(fd, buffer, offset);
   return 0;
 }
@@ -66,21 +64,21 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  if (kvs_table == NULL) {
+  if (hash_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-      "KVS state must be initialized\n");
+    "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
   for (size_t i = 0; i < num_pairs; i++) {
-    char* result = read_pair(kvs_table, keys[i]);
+    char* result = read_pair(hash_table, keys[i]);
     if (result == NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-        "(%s,KVSERROR)", keys[i]);
+      "(%s,KVSERROR)", keys[i]);
     } else {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-        "(%s,%s)", keys[i], result);
+      "(%s,%s)", keys[i], result);
     }
     free(result);
   }
@@ -93,21 +91,21 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  if (kvs_table == NULL) {
+  if (hash_table == NULL) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-      "KVS state must be initialized\n");
+    "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
   int aux = 0;
   for (size_t i = 0; i < num_pairs; i++) {
-    if (delete_pair(kvs_table, keys[i]) != 0) {
+    if (delete_pair(hash_table, keys[i]) != 0) {
       if (!aux) {
         offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
         aux = 1;
       }
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-        "(%s,KVSMISSING)", keys[i]);
+      "(%s,KVSMISSING)", keys[i]);
     }
   }
   if (aux) {
@@ -122,16 +120,16 @@ void kvs_show(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  pthread_mutex_lock(&kvs_table->kvs_mutex);
+  pthread_mutex_lock(&hash_table->table_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    KeyNode *key_node = kvs_table->table[i];
+    KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-        "(%s, %s)\n", key_node->key, key_node->value);
+      "(%s, %s)\n", key_node->key, key_node->value);
       key_node = key_node->next;
     }
   }
-  pthread_mutex_unlock(&kvs_table->kvs_mutex);
+  pthread_mutex_unlock(&hash_table->table_mutex);
   write(fd, buffer, offset);
 }
 
@@ -141,9 +139,9 @@ void kvs_show_backup(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  pthread_mutex_lock(&kvs_table->kvs_mutex);
+  pthread_mutex_lock(&hash_table->table_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    KeyNode *key_node = kvs_table->table[i];
+    KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
       size_t len_key = strlen(key_node -> key);
       size_t len_value = strlen(key_node -> value);
@@ -163,7 +161,7 @@ void kvs_show_backup(int fd) {
       key_node = key_node->next;
     }
   }
-  pthread_mutex_unlock(&kvs_table->kvs_mutex);
+  pthread_mutex_unlock(&hash_table->table_mutex);
   write(fd, buffer, offset);
 }
 
@@ -172,13 +170,13 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-    "Waiting...\n");
+  "Waiting...\n");
   write(fd, buffer, offset);
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
+void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   extern int concurrent_backups;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
@@ -193,13 +191,10 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
     pid_t exited_pid = wait(NULL);
 
     pthread_mutex_lock(&backup_mutex);
-    // Removes the fork pid from the backups pid array
     for (int i = 0; i < concurrent_backups; ++i) {
       if (backup_forks_pids[i] == exited_pid) {
-        // Shift the remaining elements to fill the gap
-        for (int j = i; j < concurrent_backups - 1; ++j) {
+        for (int j = i; j < concurrent_backups - 1; ++j)
           backup_forks_pids[j] = backup_forks_pids[j + 1];
-        }
         concurrent_backups--;
         break;
       }
@@ -210,19 +205,21 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
   pid = fork();
   if (pid == 0) {
     // This is the child process
-    int backup_output_fd = open(backup_out_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int backup_output_fd = open(backup_out_file_path,
+    O_WRONLY | O_CREAT | O_TRUNC, 0644);
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     free(backup_out_file_path);
     free(backup_forks_pids);
-    clear_file_list(&file_list);
+    destroy_jobs_queue(queue);
+    free(queue);
     kvs_terminate(STDERR_FILENO);
     exit(EXIT_SUCCESS);
   }
+
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
   backup_forks_pids[concurrent_backups] = pid;
   concurrent_backups++;
   pthread_mutex_unlock(&backup_mutex);
-  return; // Continues executing from the call function read_file()
 }

@@ -27,7 +27,8 @@ int kvs_terminate(int fd);
 /// @param keys Array of keys' strings.
 /// @param values Array of values' strings.
 /// @return 0 if the pairs were written successfully, 1 otherwise.
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int fd);
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
+char values[][MAX_STRING_SIZE], int fd);
 
 /// Reads values from the KVS.
 /// @param num_pairs Number of pairs to read.
@@ -43,17 +44,18 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 
 /// Writes the state of the KVS.
-/// @param fd the file descrpitor to write to
+/// @param fd the file descrpitor to write to.
 void kvs_show(int fd);
 
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
-/// @param fd the file descrpitor to write to
+/// @param fd the file descrpitor to write to.
 void kvs_wait(unsigned int delay_ms, int fd);
 
-/// Creates a backup of the KVS state and stores it in the correspondent
-/// backup file
-/// @return 0 if the backup was successful, 1 otherwise.
-void kvs_backup(char* backup_out_file_path, JobsList* file_list);
+/// Creates a backup of the KVS state and stores it in the corresponding
+/// backup file.
+/// @param backup_out_file_path Path to the backup output file.
+/// @param queue Pointer to the job queue.
+void kvs_backup(char* backup_out_file_path, JobQueue* queue);
 
 #endif  // KVS_OPERATIONS_H
