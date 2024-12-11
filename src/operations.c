@@ -179,7 +179,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(int backup_output_fd, JobsList* file_list) {
+void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
   extern int concurrent_backups;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
@@ -212,9 +212,10 @@ void kvs_backup(int backup_output_fd, JobsList* file_list) {
 
   if (pid == 0) {
     // This is the child process
+    int backup_output_fd = open(backup_out_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
-    // Free any dynamically allocated memory here
+    free(backup_out_file_path);
     free(backup_forks_pids);
     clear_file_list(&file_list);
     kvs_terminate(STDERR_FILENO);
