@@ -2,91 +2,15 @@
 #include "operations.h"
 #include "parser.h"
 
-void cmd_write(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
-char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
-  size_t num_pairs;
-  num_pairs = parse_write(job_data->job_fd, *keys, *values,
-  MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage\n");
-
-  sort_keys(keys, num_pairs); // Sorting to avoid deadlocks.
-
-  if (kvs_write(num_pairs, *keys, *values, job_data->job_output_fd))
-    fprintf(stderr, "Failed to write pair\n");
-}
-
-void cmd_read(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
-  size_t num_pairs;
-  num_pairs = parse_read_delete(job_data->job_fd, *keys,
-  MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage\n");
-  
-  sort_keys(keys, num_pairs); // Sorting to avoid deadlocks.
-
-  if (kvs_read(num_pairs, *keys, job_data->job_output_fd))
-    fprintf(stderr, "Failed to read pair\n");
-}
-
-void cmd_delete(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
-  size_t num_pairs;
-  num_pairs = parse_read_delete(job_data->job_fd, *keys,
-  MAX_WRITE_SIZE, MAX_STRING_SIZE);
-
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage\n");
-  
-  sort_keys(keys, num_pairs);
-
-  if (kvs_delete(num_pairs, *keys, job_data->job_output_fd))
-    fprintf(stderr, "Failed to delete pair\n");
-}
-
-void cmd_wait(JobData* job_data) {
-  unsigned int delay;
-
-  if (parse_wait(job_data->job_fd, &delay, NULL) == -1)
-    fprintf(stderr, "Invalid command. See HELP for usage\n");
-
-  if (delay > 0)
-    kvs_wait(delay, job_data->job_output_fd);
-}
-
-void cmd_backup(JobData* job_data, JobsList* file_list) {
-  char *backup_out_file_path = malloc(PATH_MAX);
-  size_t path_len = (size_t) snprintf(backup_out_file_path, PATH_MAX, "%s-%d.bck", job_data->job_file_path, job_data->backup_counter);
-  backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 for null terminator
-  kvs_backup(backup_out_file_path, file_list);
-  job_data->backup_counter++;
-  free(backup_out_file_path);
-}
-
 void read_file(JobData* job_data, JobsList* file_list) {
   job_data->job_fd = open(job_data->job_file_path, O_RDONLY);
-
-  if (job_data->job_fd == -1) {
-    fprintf(stderr, "Failed to open job file.\n");
-    return;
-  }
-
-  char jobout_file_path[PATH_MAX];
-
+  
+  char *job_out_file_path = malloc(PATH_MAX);
   job_data->job_file_path[strlen(job_data->job_file_path) - 3] = '\0';
-  
-  // File path with the correct extension for the output file
-  snprintf(jobout_file_path, sizeof(jobout_file_path), "%sout",
-  job_data->job_file_path);
-  
-  // Creates the file where the output will be written
-  job_data->job_output_fd = open(jobout_file_path,
-  O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (job_data->job_output_fd == -1) {
-    fprintf(stderr, "Failed to create new file.");
-    return;
-  }
+  size_t path_len = (size_t) snprintf(job_out_file_path, PATH_MAX, "%sout", job_data->job_file_path);
+  job_out_file_path = realloc(job_out_file_path, path_len + 1); // +1 for null terminator
+
+  job_data->job_output_fd = open(job_out_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
@@ -127,8 +51,74 @@ void read_file(JobData* job_data, JobsList* file_list) {
         break;
     }
   }
+  free(job_out_file_path);
   close(job_data->job_fd);
   close(job_data->job_output_fd);
+}
+
+void cmd_write(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
+char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
+  size_t num_pairs;
+  num_pairs = parse_write(job_data->job_fd, *keys, *values,
+  MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0)
+    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+
+  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
+
+  if (kvs_write(num_pairs, *keys, *values, job_data->job_output_fd))
+    fprintf(stderr, "Failed to write pair.\n");
+}
+
+void cmd_read(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
+  size_t num_pairs;
+  num_pairs = parse_read_delete(job_data->job_fd, *keys,
+  MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0)
+    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  
+  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
+
+  if (kvs_read(num_pairs, *keys, job_data->job_output_fd))
+    fprintf(stderr, "Failed to read pair.\n");
+}
+
+void cmd_delete(JobData* job_data, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
+  size_t num_pairs;
+  num_pairs = parse_read_delete(job_data->job_fd, *keys,
+  MAX_WRITE_SIZE, MAX_STRING_SIZE);
+
+  if (num_pairs == 0)
+    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  
+  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
+
+  if (kvs_delete(num_pairs, *keys, job_data->job_output_fd))
+    fprintf(stderr, "Failed to delete pair.\n");
+}
+
+void cmd_wait(JobData* job_data) {
+  unsigned int delay;
+
+  if (parse_wait(job_data->job_fd, &delay, NULL) == -1)
+    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+
+  if (delay > 0)
+    kvs_wait(delay, job_data->job_output_fd);
+}
+
+void cmd_backup(JobData* job_data, JobsList* file_list) {
+  char *backup_out_file_path = malloc(PATH_MAX);
+  size_t path_len = (size_t) snprintf(backup_out_file_path, PATH_MAX,
+  "%s-%d.bck", job_data->job_file_path, job_data->backup_counter);
+  backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 for null terminator
+
+  kvs_backup(backup_out_file_path, file_list);
+  job_data->backup_counter++;
+  
+  free(backup_out_file_path);
 }
 
 void *process_file(void *arg) {
@@ -139,7 +129,6 @@ void *process_file(void *arg) {
   job_data = job_files_list->current_job;
   job_files_list->current_job = job_files_list->current_job->next;
   pthread_mutex_unlock(&job_files_list->current_job_mutex);
-
 
   for (; job_data != NULL; job_data = job_data->next) {
     pthread_mutex_lock(&job_data->mutex);
@@ -183,16 +172,17 @@ char *path) {
     job_data->backup_counter = 1;
     job_data->status = 0;
     pthread_mutex_init(&job_data->mutex, NULL);
+    
     size_t path_len = strlen(path) + strlen(current_file->d_name) + 2; // +2 for '/' and null terminator
     job_data->job_file_path = malloc(path_len * sizeof(char));
-    snprintf(job_data->job_file_path, path_len, "%s/%s",
-    path, current_file->d_name);
+    snprintf(job_data->job_file_path, path_len, "%s/%s", path, current_file->d_name);
+
     add_job_data(job_files_list, job_data);
   } else if (current_file->d_type == 4 && strcmp(current_file->d_name, ".") != 0\
   && strcmp(current_file->d_name, "..") != 0) {
-    char nested_path[PATH_MAX];
-    snprintf(nested_path, sizeof(nested_path), "%s/%s",
-    path, current_file->d_name);
+    char *nested_path = malloc(PATH_MAX);
+    size_t nested_path_len = (size_t) snprintf(nested_path, PATH_MAX, "%s/%s", path, current_file->d_name);
+    nested_path = realloc(nested_path, nested_path_len + 1); // +1 for null terminator
     DIR *nested_dir = opendir(nested_path);
     if (nested_dir != NULL) {
       while ((current_file = readdir(nested_dir)) != NULL) {
@@ -200,6 +190,7 @@ char *path) {
       }
     }
     closedir(nested_dir);
+    free(nested_path);
   }
 }
 
@@ -235,7 +226,8 @@ void add_job_data(JobsList** job_files_list, JobData* new_job_data) {
   (*job_files_list)->num_files++;
 }
 
-void sort_keys(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
+// Destructively sorts keys in alphabetical order using insertion sort.
+void sort_keys_alphabetically(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
 size_t num_pairs) {
   for (size_t i = 1; i < num_pairs; ++i) {
     char temp[MAX_STRING_SIZE];

@@ -109,8 +109,8 @@ int delete_pair(HashTable *ht, const char *key) {
 }
 
 void free_table(HashTable *ht) {
+  pthread_mutex_lock(&ht->kvs_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
-    pthread_mutex_lock(&ht->kvs_mutex);
     KeyNode *key_node = ht->table[i];
     while (key_node != NULL) {
       KeyNode *temp = key_node;
@@ -121,8 +121,8 @@ void free_table(HashTable *ht) {
       free(temp);
     }
     pthread_mutex_destroy(&ht->hash_mutex[i]);
-    pthread_mutex_unlock(&ht->kvs_mutex);
   }
+  pthread_mutex_unlock(&ht->kvs_mutex);
   pthread_mutex_destroy(&ht->kvs_mutex);
   free(ht);
 }

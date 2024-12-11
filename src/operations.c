@@ -18,7 +18,6 @@ int kvs_init(int fd) {
     char buffer[PIPE_BUF];
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
-
     offset += (size_t)snprintf(buffer + offset, buff_size - offset,
       "KVS state has already been initialized\n");
     write(fd, buffer, offset);
@@ -209,7 +208,6 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
   }
 
   pid = fork();
-
   if (pid == 0) {
     // This is the child process
     int backup_output_fd = open(backup_out_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -221,7 +219,6 @@ void kvs_backup(char* backup_out_file_path, JobsList* file_list) {
     kvs_terminate(STDERR_FILENO);
     exit(EXIT_SUCCESS);
   }
-
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
   backup_forks_pids[concurrent_backups] = pid;

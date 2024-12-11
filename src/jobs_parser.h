@@ -29,7 +29,6 @@ typedef struct {
   pthread_mutex_t current_job_mutex;
 } JobsList;
 
-
 /**
  * @brief List all the files in a dir and for each .job call the read_file() function
  * 
@@ -120,5 +119,6 @@ void clear_file_list(JobsList** job_files_list);
  */
 void add_job_data(JobsList** job_files_list, JobData* new_job_data);
 
-void sort_keys(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs);
+void sort_keys_alphabetically(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs);
+
 #endif
