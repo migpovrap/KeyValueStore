@@ -52,7 +52,7 @@ void cmd_wait(JobData* job_data) {
   }
 }
 
-void cmd_backup(JobData* job_data, FileList* file_list) {
+void cmd_backup(JobData* job_data, JobsList* file_list) {
   char backup_out_file_path[PATH_MAX];
   snprintf(backup_out_file_path, sizeof(backup_out_file_path), "%s-%d.bck", job_data->job_file_path, job_data->backup_counter);
   // Creates the file where the backup will be written
@@ -62,7 +62,7 @@ void cmd_backup(JobData* job_data, FileList* file_list) {
   job_data->backup_counter++;
 }
 
-void read_file(JobData* job_data, FileList* file_list) {
+void read_file(JobData* job_data, JobsList* file_list) {
   job_data->job_fd = open(job_data->job_file_path, O_RDONLY);
 
   if (job_data->job_fd == -1) {
@@ -125,18 +125,25 @@ void read_file(JobData* job_data, FileList* file_list) {
   }
   close(job_data->job_fd);
   close(job_data->job_output_fd);
+  printf("Thread %lu: Completed processing job %s\n", pthread_self(), job_data->job_file_path);
 }
 
 void *process_file(void *arg) {
-  ThreadArgs *args = (ThreadArgs *)arg;
-  JobData *job_data = args->current_job;
-  FileList *job_files_list = args->job_files_list;
+  JobsList *job_files_list = (JobsList *)arg;
+  JobData *job_data;
+
+  pthread_mutex_lock(&job_files_list->current_job_mutex);
+  job_data = job_files_list->current_job;
+  job_files_list->current_job = job_files_list->current_job->next;
+  pthread_mutex_unlock(&job_files_list->current_job_mutex);
+
 
   for (; job_data != NULL; job_data = job_data->next) {
     pthread_mutex_lock(&job_data->mutex);
     if (job_data->status == 0) { // 0 means unclaimed file
       job_data->status = 1; // 1 means already claimed by a thread
       pthread_mutex_unlock(&job_data->mutex);
+      printf("Thread %lu: Started processing job %s\n", pthread_self(), job_data->job_file_path);
       read_file(job_data, job_files_list);
       close(job_data->job_fd);
       close(job_data->job_output_fd);
@@ -149,21 +156,24 @@ void *process_file(void *arg) {
   return NULL;
 }
 
-FileList *list_dir(char *path) {
+JobsList *list_dir(char *path) {
   DIR *dir = opendir(path);
   struct dirent *current_file;
-  FileList *job_files_list = malloc(sizeof(FileList));
+  JobsList *job_files_list = malloc(sizeof(JobsList));
   job_files_list->num_files = 0;
-  job_files_list->job_data = NULL;
+  job_files_list->job_data_start = NULL;
+  job_files_list->current_job = NULL;
+  pthread_mutex_init(&job_files_list->current_job_mutex, NULL);
   
   while ((current_file = readdir(dir)) != NULL) {
     process_entry(&job_files_list, current_file, path);
   }
   closedir(dir);
+  job_files_list->current_job = job_files_list->job_data_start;
   return job_files_list;
 }
 
-void process_entry(FileList **job_files_list, struct dirent *current_file, char *path) {
+void process_entry(JobsList **job_files_list, struct dirent *current_file, char *path) {
   if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
     JobData *job_data = malloc(sizeof(JobData));
     job_data->next = NULL;
@@ -187,10 +197,10 @@ void process_entry(FileList **job_files_list, struct dirent *current_file, char 
   }
 }
 
-void clear_file_list(FileList** job_files_list) {
-  if ((*job_files_list)->job_data == NULL)
+void clear_file_list(JobsList** job_files_list) {
+  if ((*job_files_list)->job_data_start == NULL)
     return;
-  JobData* current_job = (*job_files_list)->job_data;
+  JobData* current_job = (*job_files_list)->job_data_start;
   while (current_job != NULL) {
     JobData* next_job = current_job->next;
     pthread_mutex_destroy(&current_job->mutex);
@@ -198,17 +208,18 @@ void clear_file_list(FileList** job_files_list) {
     free(current_job);
     current_job = next_job;
   }
-  (*job_files_list)->job_data = NULL; // After it clears the linked list the head is set to null
+  (*job_files_list)->job_data_start = NULL; // After it clears the linked list the head is set to null
   (*job_files_list)->current_job = NULL;
+  pthread_mutex_destroy(&(*job_files_list)->current_job_mutex);
   free(*job_files_list);
   *job_files_list = NULL;
 }
 
-void add_job_data(FileList** job_files_list, JobData* new_job_data) {
-  if ((*job_files_list)->job_data == NULL) {
-    (*job_files_list)->job_data = new_job_data;
+void add_job_data(JobsList** job_files_list, JobData* new_job_data) {
+  if ((*job_files_list)->job_data_start == NULL) {
+    (*job_files_list)->job_data_start = new_job_data;
   } else {
-    JobData* current_job = (*job_files_list)->job_data;
+    JobData* current_job = (*job_files_list)->job_data_start;
     while (current_job->next != NULL) {
       current_job = current_job->next;
     }

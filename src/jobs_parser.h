@@ -23,23 +23,19 @@ typedef struct JobData {
 } JobData;
 
 typedef struct {
-  JobData* job_data;
+  JobData* job_data_start;
   JobData* current_job;
-  pthread_mutex_t current_job_mutex;
   int num_files;
-} FileList;
+  pthread_mutex_t current_job_mutex;
+} JobsList;
 
-typedef struct {
-    JobData *current_job;
-    FileList *job_files_list;
-} ThreadArgs;
 
 /**
  * @brief List all the files in a dir and for each .job call the read_file() function
  * 
  * @param path The path of the directory containing the job files can be releative or complete
  */
-FileList *list_dir(char *path);
+JobsList *list_dir(char *path);
 
 /**
  * @brief Process the entry of the directory and add the job data to the list
@@ -48,7 +44,7 @@ FileList *list_dir(char *path);
  * @param current_file The current file to process
  * @param path The path of the directory containing the job files can be releative or complete
  */
-void process_entry(FileList **job_files_list, struct dirent *current_file, char *path);
+void process_entry(JobsList **job_files_list, struct dirent *current_file, char *path);
 
 /**
  * @brief Process the file and execute the commands in it
@@ -63,7 +59,7 @@ void *process_file(void *arg);
  * @param job_file_path Complete path to the job file.
  * @param max_backups The maximun number of concurrent backups process
  */
-void read_file(JobData* job_data, FileList* file_list);
+void read_file(JobData* job_data, JobsList* file_list);
 
 /**
  * @brief Writes a command to the job file descriptor.
@@ -107,14 +103,14 @@ void cmd_wait(JobData* job_data);
  * @param backupoutput File descriptor of the .bck file
  * @param joboutput File descriptor of the .job file
  */
-void cmd_backup(JobData* job_data, FileList* file_list);
+void cmd_backup(JobData* job_data, JobsList* file_list);
 
 /**
  * @brief Clears the job data list.
  * 
  * @param job_files_list The list of job data
  */
-void clear_file_list(FileList** job_files_list);
+void clear_file_list(JobsList** job_files_list);
 
 /**
  * @brief Adds a new job data to the list.
@@ -122,7 +118,7 @@ void clear_file_list(FileList** job_files_list);
  * @param job_files_list The list of job data
  * @param new_job_data The new job data to add
  */
-void add_job_data(FileList** job_files_list, JobData* new_job_data);
+void add_job_data(JobsList** job_files_list, JobData* new_job_data);
 
 void sort_keys(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE], size_t num_pairs);
 #endif

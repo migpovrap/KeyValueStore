@@ -23,17 +23,12 @@ int main(int argc, char *argv[]) {
     int max_threads = atoi(argv[3]);
     max_concurrent_backups = atoi(argv[2]);
 
-    FileList *job_files_list = list_dir(argv[1]);
-    JobData *current_job = job_files_list->job_data;
+    JobsList *job_files_list = list_dir(argv[1]);
     pthread_t threads[max_threads];
-    ThreadArgs thread_args[max_threads];
     backup_forks_pids = (pid_t *)malloc(sizeof(pid_t) * (size_t)max_concurrent_backups);
 
-    for (int i = 0; i < max_threads && current_job != NULL; ++i) {
-      thread_args[i].current_job = current_job;
-      thread_args[i].job_files_list = job_files_list;
-      pthread_create(&threads[i], NULL, process_file, (void *)&thread_args[i]);
-      current_job = current_job->next;
+    for (int i = 0; i < max_threads &&  job_files_list->current_job != NULL; ++i) {
+      pthread_create(&threads[i], NULL, process_file, (void *)job_files_list);
     }
 
     for (int i = 0; i < max_threads; ++i) {

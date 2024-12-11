@@ -49,7 +49,7 @@ format:
 
 # Runs with a max of two forks and single threadhed
 test_private: kvs
-	@export MallocNanoZone=0 && ./kvs ../jobs 2 2
+	@export MallocNanoZone=0 && ./kvs ../jobs 2 3
 	@echo "Test runned sucessfully, not using diff thread execution order cannot be predicted."
 	@$(MAKE) -s clean
 

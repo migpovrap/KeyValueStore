@@ -168,7 +168,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(int backup_output_fd, FileList* file_list) {
+void kvs_backup(int backup_output_fd, JobsList* file_list) {
   static int concurrent_backups = 0;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
