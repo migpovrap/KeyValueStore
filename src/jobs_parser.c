@@ -255,6 +255,25 @@ void read_file(Job* job, JobQueue* queue) {
   close(job->job_output_fd);
 }
 
+/**
+ * @brief Frees the memory allocated for a job.
+ * 
+ * @param job The job to be freed.
+ */
+void destroy_job(Job *job) {
+  free(job->job_file_path);
+  free(job);
+}
+
+void destroy_jobs_queue(JobQueue *queue) {
+  pthread_mutex_lock(&queue->queue_mutex);
+  queue->current_job = NULL;
+  queue->num_files = 0;
+  pthread_mutex_unlock(&queue->queue_mutex);
+  pthread_mutex_destroy(&queue->queue_mutex);
+  free(queue);
+}
+
 void *process_file(void *arg) {
   JobQueue *queue = (JobQueue *)arg;
   pthread_mutex_lock(&queue->queue_mutex);
@@ -262,24 +281,9 @@ void *process_file(void *arg) {
     pthread_mutex_unlock(&queue->queue_mutex);
     Job *job = dequeue_job(queue);
     read_file(job, queue);
+    destroy_job(job);
     pthread_mutex_lock(&queue->queue_mutex);
   }
   pthread_mutex_unlock(&queue->queue_mutex);
   return NULL;
-}
-
-void destroy_jobs_queue(JobQueue *queue) {
-  pthread_mutex_lock(&queue->queue_mutex);
-  Job *current = queue->current_job;
-  while (current != NULL) {
-    Job *next = current->next;
-    free(current->job_file_path);
-    free(current);
-    current = next;
-  }
-  queue->current_job = NULL;
-  queue->last_job = NULL;
-  queue->num_files = 0;
-  pthread_mutex_unlock(&queue->queue_mutex);
-  pthread_mutex_destroy(&queue->queue_mutex);
 }

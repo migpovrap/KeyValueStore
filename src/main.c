@@ -54,7 +54,6 @@ int main(int argc, char *argv[]) {
 
   free(backup_forks_pids);
   destroy_jobs_queue(queue);
-  free(queue);
   kvs_terminate(STDERR_FILENO);
   return 0;
 }

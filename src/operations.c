@@ -212,7 +212,6 @@ void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     free(backup_out_file_path);
     free(backup_forks_pids);
     destroy_jobs_queue(queue);
-    free(queue);
     kvs_terminate(STDERR_FILENO);
     exit(EXIT_SUCCESS);
   }
