@@ -10,6 +10,7 @@
 
 int max_concurrent_backups;
 pid_t *backup_forks_pids;
+int concurrent_backups = 0;
 
 
 int main(int argc, char *argv[]) {
@@ -25,15 +26,14 @@ int main(int argc, char *argv[]) {
 
     JobsList *job_files_list = list_dir(argv[1]);
     pthread_t threads[max_threads];
-    backup_forks_pids = (pid_t *)malloc(sizeof(pid_t) * (size_t)max_concurrent_backups);
+    backup_forks_pids = (pid_t *)malloc(
+      sizeof(pid_t)* (size_t)max_concurrent_backups);
 
-    for (int i = 0; i < max_threads &&  job_files_list->current_job != NULL; ++i) {
+    for (int i = 0; i < max_threads &&  job_files_list->current_job != NULL; ++i)
       pthread_create(&threads[i], NULL, process_file, (void *)job_files_list);
-    }
 
-    for (int i = 0; i < max_threads; ++i) {
+    for (int i = 0; i < max_threads; ++i)
       pthread_join(threads[i], NULL);
-    }
 
     // Wait for all child processes to terminate
     for (int i = 0; i < max_concurrent_backups; i++) {

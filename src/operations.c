@@ -19,7 +19,8 @@ int kvs_init(int fd) {
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
 
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state has already been initialized\n");
+    offset += (size_t)snprintf(buffer + offset, buff_size - offset,
+      "KVS state has already been initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
@@ -33,7 +34,8 @@ int kvs_terminate(int fd) {
     char buffer[PIPE_BUF];
     size_t buff_size = sizeof(buffer);
     size_t offset = 0;
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
@@ -41,20 +43,22 @@ int kvs_terminate(int fd) {
   return 0;
 }
 
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int fd) {
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], 
+  char values[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   if (kvs_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
-  for (size_t i = 0; i < num_pairs; i++) {
-    if (write_pair(kvs_table, keys[i], values[i]) != 0) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
-    }
-  }
+  for (size_t i = 0; i < num_pairs; i++)
+    if (write_pair(kvs_table, keys[i], values[i]) != 0)
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+        "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
+
   write(fd, buffer, offset);
   return 0;
 }
@@ -64,7 +68,8 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   if (kvs_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
@@ -72,9 +77,11 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(kvs_table, keys[i]);
     if (result == NULL) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,KVSERROR)", keys[i]);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+        "(%s,KVSERROR)", keys[i]);
     } else {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,%s)", keys[i], result);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+        "(%s,%s)", keys[i], result);
     }
     free(result);
   }
@@ -88,7 +95,8 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   if (kvs_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "KVS state must be initialized\n");
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "KVS state must be initialized\n");
     write(fd, buffer, offset);
     return 1;
   }
@@ -99,7 +107,8 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
         offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
         aux = 1;
       }
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s,KVSMISSING)", keys[i]);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+        "(%s,KVSMISSING)", keys[i]);
     }
   }
   if (aux) {
@@ -118,7 +127,8 @@ void kvs_show(int fd) {
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = kvs_table->table[i];
     while (key_node != NULL) {
-      offset += (size_t) snprintf(buffer + offset, buff_size - offset, "(%s, %s)\n", key_node->key, key_node->value);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+        "(%s, %s)\n", key_node->key, key_node->value);
       key_node = key_node->next;
     }
   }
@@ -162,14 +172,15 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "Waiting...\n");
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+    "Waiting...\n");
   write(fd, buffer, offset);
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
 }
 
 void kvs_backup(int backup_output_fd, JobsList* file_list) {
-  static int concurrent_backups = 0;
+  extern int concurrent_backups;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
   pid_t pid;

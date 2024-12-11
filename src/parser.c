@@ -166,7 +166,8 @@ int parse_pair(int fd, char *key, char *value) {
   return 1;
 }
 
-size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size) {
+size_t parse_write(int fd, char keys[][MAX_STRING_SIZE],
+  char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size) {
   char ch;
 
   if (read(fd, &ch, 1) != 1 || ch != '[') {
@@ -214,7 +215,8 @@ size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRIN
   return num_pairs;
 }
 
-size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE], size_t max_keys, size_t max_string_size) {
+size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE],
+  size_t max_keys, size_t max_string_size) {
   char ch;
 
   if (read(fd, &ch, 1) != 1 || ch != '[') {

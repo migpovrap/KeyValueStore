@@ -125,7 +125,6 @@ void read_file(JobData* job_data, JobsList* file_list) {
   }
   close(job_data->job_fd);
   close(job_data->job_output_fd);
-  printf("Thread %lu: Completed processing job %s\n", pthread_self(), job_data->job_file_path);
 }
 
 void *process_file(void *arg) {
@@ -143,7 +142,6 @@ void *process_file(void *arg) {
     if (job_data->status == 0) { // 0 means unclaimed file
       job_data->status = 1; // 1 means already claimed by a thread
       pthread_mutex_unlock(&job_data->mutex);
-      printf("Thread %lu: Started processing job %s\n", pthread_self(), job_data->job_file_path);
       read_file(job_data, job_files_list);
       close(job_data->job_fd);
       close(job_data->job_output_fd);
