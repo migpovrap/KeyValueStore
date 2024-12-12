@@ -48,8 +48,7 @@ format:
 	@clang-format -i *.c *.h
 
 test_private: kvs
-	@export MallocNanoZone=0 && time ./kvs ../jobs 79 456
-	@echo "Done"
+	@export MallocNanoZone=0 && { time ./kvs ../jobs 79 456 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
 test_public: kvs
