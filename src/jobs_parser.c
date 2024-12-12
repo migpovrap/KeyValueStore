@@ -254,8 +254,10 @@ void read_file(Job* job, JobQueue* queue) {
  * @param job The job to be freed.
  */
 void destroy_job(Job *job) {
-  free(job->job_file_path);
-  free(job);
+  if(job != NULL) {
+    free(job->job_file_path);
+    free(job);
+  }
 }
 
 void destroy_jobs_queue(JobQueue *queue) {

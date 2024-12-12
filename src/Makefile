@@ -48,7 +48,7 @@ format:
 	@clang-format -i *.c *.h
 
 test_private: kvs
-	@export MallocNanoZone=0 && ./kvs ../jobs 79 456
+	@export MallocNanoZone=0 && time ./kvs ../jobs 79 456
 	@echo "Done"
 	@$(MAKE) -s clean
 
