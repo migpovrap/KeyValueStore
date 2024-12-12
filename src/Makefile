@@ -16,6 +16,9 @@ ifneq ($(shell uname -s),Darwin) # if not macOS
 endif
 
 all: kvs
+	@if [ ! -f ../lizard_output.log ]; then \
+		lizard -L 50 -T nloc=50 -m *.c | tee ../lizard_output.log; \
+	fi
 
 kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 	@$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o -lpthread
@@ -24,15 +27,16 @@ kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: kvs
-	@export MallocNanoZone=0 && ./kvs
+	export MallocNanoZone=0 && ./kvs
 
-rm: #Removes job outs and backups.
+rm: # Removes job outs and backups.
 	@rm -rf ../jobs/*.out ../jobs/**/*.out
 	@rm -rf ../jobs/*.bck ../jobs/**/*.bck
 	@rm -f ../tests-public/jobs/*.out
 	@rm -f ../tests-public/jobs/*.bck
 	@rm -f ../tests-public/jobs2/*/*.out
 	@rm -f ../tests-public/jobs2/*/*.bck
+	@rm -f ../lizard_output.log
 
 clean:
 	@rm -f ../tests-public/kvs
@@ -61,8 +65,8 @@ valgrind: kvs
 
 stress_test: kvs
 	@for i in {1..50}; do \
-			export MallocNanoZone=0 && ./kvs ../jobs 200 150; \
-			$(MAKE) -s rm; \
-			echo "Run $$i completed"; \
+		export MallocNanoZone=0 && ./kvs ../jobs 200 150; \
+		$(MAKE) -s rm; \
+		echo "Run $$i completed"; \
 	done
 	@$(MAKE) -s clean

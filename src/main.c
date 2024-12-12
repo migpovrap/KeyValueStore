@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
     <max_number_threads>\n", argv[0]);
     return 1;
   }
+
   max_concurrent_backups = atoi(argv[2]);
   int max_threads = atoi(argv[3]);
   int num_threads = 0;
@@ -43,10 +44,8 @@ int main(int argc, char *argv[]) {
   backup_forks_pids = (pid_t *) malloc(
   sizeof(pid_t) * (size_t) max_concurrent_backups);
 
-  // Initialize backup_forks_pids array
-  for (int i = 0; i < max_concurrent_backups; ++i) {
-      backup_forks_pids[i] = -1; // Initialize with invalid PID
-  }
+  for (int i = 0; i < max_concurrent_backups; ++i)
+    backup_forks_pids[i] = -1; // Initialize with an invalid PID
 
   for (int i = 0; i < max_threads && i < queue->num_files; ++i) {
     pthread_create(&threads[i], NULL, process_file, (void *)queue);
@@ -55,14 +54,12 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < num_threads; ++i)
     pthread_join(threads[i], NULL);
-    
 
-  for (int i = 0; i < max_concurrent_backups; i++) {
+  for (int i = 0; i < max_concurrent_backups; i++)
     if (backup_forks_pids[i] >= 0) {
       kill(backup_forks_pids[i], SIGTERM);
       waitpid(backup_forks_pids[i], NULL, 0);
     }
-  }
 
   free(backup_forks_pids);
   destroy_jobs_queue(queue);

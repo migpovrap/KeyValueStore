@@ -220,30 +220,23 @@ void read_file(Job* job, JobQueue* queue) {
       case CMD_WRITE:
         cmd_write(job, &keys, &values);
         break;
-
       case CMD_READ:
         cmd_read(job, &keys);
         break;
-
       case CMD_DELETE:
         cmd_delete(job, &keys);
         break;
-
       case CMD_SHOW:
         kvs_show(job->job_output_fd);
         break;
-
       case CMD_WAIT:
         cmd_wait(job);
         break;
-
       case CMD_BACKUP:
         cmd_backup(job, queue);
         break;
-
       case CMD_INVALID:
         break;
-
       case CMD_HELP:
       case CMD_EMPTY:
       case EOC:
