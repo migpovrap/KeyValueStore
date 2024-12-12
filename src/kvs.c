@@ -31,6 +31,7 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
   // Search for the key node
   while (key_node != NULL) {
     if (strcmp(key_node->key, key) == 0) {
+      //TODO: Fix Maycock
       free(key_node->value);
       key_node->value = strdup(value);
       return 0;
