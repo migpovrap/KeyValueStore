@@ -72,80 +72,93 @@ static void cleanup(int fd) {
   while (read(fd, &ch, 1) == 1 && ch != '\n');
 }
 
+enum Command parse_w(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 4) != 4 || strncmp(buff, "WAIT ", 5) != 0) {
+    if (read(fd, buff + 5, 1) != 1 || strncmp(buff, "WRITE ", 6) != 0) {
+      cleanup(fd);
+      return CMD_INVALID;
+    }
+    return CMD_WRITE;
+  }
+  return CMD_WAIT;
+}
+
+enum Command parse_r(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 4) != 4 || strncmp(buff, "READ ", 5) != 0) {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  return CMD_READ;
+}
+
+enum Command parse_d(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 6) != 6 || strncmp(buff, "DELETE ", 7) != 0) {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  return CMD_DELETE;
+}
+
+enum Command parse_s(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 3) != 3 || strncmp(buff, "SHOW", 4) != 0) {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  if (read(fd, buff + 4, 1) != 0 && buff[4] != '\n') {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  return CMD_SHOW;
+}
+
+enum Command parse_b(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 5) != 5 || strncmp(buff, "BACKUP", 6) != 0) {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  if (read(fd, buff + 6, 1) != 0 && buff[6] != '\n') {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  return CMD_BACKUP;
+}
+
+enum Command parse_h(int fd, char buff[16]) {
+  if (read(fd, buff + 1, 3) != 3 || strncmp(buff, "HELP", 4) != 0) {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  if (read(fd, buff + 4, 1) != 0 && buff[4] != '\n') {
+    cleanup(fd);
+    return CMD_INVALID;
+  }
+  return CMD_HELP;
+}
+
 enum Command get_next(int fd) {
-  char buf[16];
-  if (read(fd, buf, 1) != 1) {
+  char buff[16];
+  if (read(fd, buff, 1) != 1) {
     return EOC;
   }
 
-  switch (buf[0]) {
+  switch (buff[0]) {
     case 'W':
-      if (read(fd, buf + 1, 4) != 4 || strncmp(buf, "WAIT ", 5) != 0) {
-        if (read(fd, buf + 5, 1) != 1 || strncmp(buf, "WRITE ", 6) != 0) {
-          cleanup(fd);
-          return CMD_INVALID;
-        }
-        return CMD_WRITE;
-      }
-      return CMD_WAIT;
-
+      return parse_w(fd, buff);
     case 'R':
-      if (read(fd, buf + 1, 4) != 4 || strncmp(buf, "READ ", 5) != 0) {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-      return CMD_READ;
-
+      return parse_r(fd, buff);
     case 'D':
-      if (read(fd, buf + 1, 6) != 6 || strncmp(buf, "DELETE ", 7) != 0) {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-      return CMD_DELETE;
-
+      return parse_d(fd, buff);
     case 'S':
-      if (read(fd, buf + 1, 3) != 3 || strncmp(buf, "SHOW", 4) != 0) {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-
-      if (read(fd, buf + 4, 1) != 0 && buf[4] != '\n') {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-      return CMD_SHOW;
-
+      return parse_s(fd, buff);
     case 'B':
-      if (read(fd, buf + 1, 5) != 5 || strncmp(buf, "BACKUP", 6) != 0) {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-
-      if (read(fd, buf + 6, 1) != 0 && buf[6] != '\n') {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-      return CMD_BACKUP;
-
+      return parse_b(fd, buff);
     case 'H':
-      if (read(fd, buf + 1, 3) != 3 || strncmp(buf, "HELP", 4) != 0) {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-
-      if (read(fd, buf + 4, 1) != 0 && buf[4] != '\n') {
-        cleanup(fd);
-        return CMD_INVALID;
-      }
-      return CMD_HELP;
-
+      return parse_h(fd, buff);
     case '#':
       cleanup(fd);
       return CMD_EMPTY;
-
     case '\n':
       return CMD_EMPTY;
-
     default:
       cleanup(fd);
       return CMD_INVALID;

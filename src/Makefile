@@ -6,7 +6,7 @@ CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
   -fsanitize=address -fsanitize=undefined
 
-VALGRIND_CFLAGS = -g -O0 -std=c17 -D_POSIX_C_SOURCE=200809L \
+VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
   -Wall -Werror -Wextra \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
   -lpthread
