@@ -14,14 +14,16 @@ typedef struct KeyNode {
   char *key;
   char *value;
   struct KeyNode *next;
-  pthread_mutex_t node_mutex;
 } KeyNode;
 
 typedef struct HashTable {
   KeyNode *table[TABLE_SIZE];
-  pthread_mutex_t table_mutex;
-  pthread_mutex_t hash_mutex[TABLE_SIZE];
+  pthread_rwlock_t table_lock;
+  pthread_rwlock_t hash_lock[TABLE_SIZE];
 } HashTable;
+
+//TODO: Add description.  
+int hash(const char *key);
 
 /// Creates a new event hash table.
 /// @return Newly created hash table, NULL on failure

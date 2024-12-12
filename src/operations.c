@@ -50,10 +50,18 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
     write(fd, buffer, offset);
     return 1;
   }
+
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_rdlock(&hash_table->hash_lock[hash(keys[i])]);
+
   for (size_t i = 0; i < num_pairs; i++)
     if (write_pair(hash_table, keys[i], values[i]) != 0)
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
       "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
+  
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
+
   write(fd, buffer, offset);
   return 0;
 }
@@ -69,6 +77,10 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     return 1;
   }
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
+
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_wrlock(&hash_table->hash_lock[hash(keys[i])]);
+
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(hash_table, keys[i]);
     if (result == NULL) {
@@ -80,6 +92,10 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     }
     free(result);
   }
+
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
+  
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
   write(fd, buffer, offset);
   return 0;
@@ -96,6 +112,10 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     return 1;
   }
   int aux = 0;
+
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_rdlock(&hash_table->hash_lock[hash(keys[i])]);
+  
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(hash_table, keys[i]) != 0) {
       if (!aux) {
@@ -106,6 +126,10 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
       "(%s,KVSMISSING)", keys[i]);
     }
   }
+
+  for (size_t i = 0; i < num_pairs; i++)
+    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
+
   if (aux) {
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
   }
@@ -117,7 +141,7 @@ void kvs_show(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  pthread_mutex_lock(&hash_table->table_mutex);
+  pthread_rwlock_rdlock(&hash_table->table_lock);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
@@ -126,7 +150,7 @@ void kvs_show(int fd) {
       key_node = key_node->next;
     }
   }
-  pthread_mutex_unlock(&hash_table->table_mutex);
+  pthread_rwlock_unlock(&hash_table->table_lock);
   write(fd, buffer, offset);
 }
 
@@ -134,7 +158,6 @@ void kvs_show_backup(int fd) { // Thread safe version of kvs_show
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  pthread_mutex_lock(&hash_table->table_mutex);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
@@ -156,7 +179,6 @@ void kvs_show_backup(int fd) { // Thread safe version of kvs_show
       key_node = key_node->next;
     }
   }
-  pthread_mutex_unlock(&hash_table->table_mutex);
   write(fd, buffer, offset);
 }
 

@@ -4,12 +4,11 @@ CC = gcc
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
   -Wall -Werror -Wextra \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -fsanitize=address -fsanitize=undefined
+  -fsanitize=thread -fsanitize=undefined
 
 VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
   -Wall -Werror -Wextra \
-  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -lpthread
+  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused
 
 ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
@@ -48,7 +47,7 @@ format:
 	@clang-format -i *.c *.h
 
 test_private: kvs
-	@export MallocNanoZone=0 && { time ./kvs ../jobs 79 456 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
+	@{ time ./kvs ../jobs 79 456 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
 test_public: kvs
