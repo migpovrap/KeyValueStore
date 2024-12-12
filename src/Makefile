@@ -1,17 +1,15 @@
 SHELL := /bin/bash
 CC = gcc
 
-# Para mais informações sobre as flags de warning, consulte a informação adicional no lab_ferramentas
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
-		 -Wall -Werror -Wextra \
-		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-		 -fsanitize=address -fsanitize=undefined
+  -Wall -Werror -Wextra \
+  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
+  -fsanitize=address -fsanitize=undefined
 
-# Flags for Valgrind
 VALGRIND_CFLAGS = -g -O0 -std=c17 -D_POSIX_C_SOURCE=200809L \
-		-Wall -Werror -Wextra \
-		-Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-		-lpthread
+  -Wall -Werror -Wextra \
+  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
+  -lpthread
 
 ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
@@ -28,10 +26,9 @@ kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 run: kvs
 	@export MallocNanoZone=0 && ./kvs
 
-rm:
+rm: #Removes job outs and backups.
 	@rm -rf ../jobs/*.out ../jobs/**/*.out
 	@rm -rf ../jobs/*.bck ../jobs/**/*.bck
-	@rm -rf ../jobs/*.diff ../jobs/**/*.diff
 	@rm -f ../tests-public/jobs/*.out
 	@rm -f ../tests-public/jobs/*.bck
 	@rm -f ../tests-public/jobs2/*/*.out
@@ -46,10 +43,9 @@ format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	@clang-format -i *.c *.h
 
-# Runs with a max of two forks and single threadhed
 test_private: kvs
 	@export MallocNanoZone=0 && ./kvs ../jobs 79 456
-	@echo "Test runned sucessfully, not using diff thread execution order cannot be predicted."
+	@echo "Done"
 	@$(MAKE) -s clean
 
 test_public: kvs
@@ -61,6 +57,7 @@ test_public: kvs
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
+	@$(MAKE) -s clean
 
 stress_test: kvs
 	@for i in {1..50}; do \
@@ -68,3 +65,4 @@ stress_test: kvs
 			$(MAKE) -s rm; \
 			echo "Run $$i completed"; \
 	done
+	@$(MAKE) -s clean
