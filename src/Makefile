@@ -27,7 +27,7 @@ kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: kvs
-	export MallocNanoZone=0 && ./kvs
+	@export MallocNanoZone=0 && ./kvs ../jobs 7 3
 
 rm: # Removes job outs and backups.
 	@rm -rf ../jobs/*.out ../jobs/**/*.out

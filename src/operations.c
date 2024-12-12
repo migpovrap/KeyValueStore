@@ -114,7 +114,6 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
 }
 
 void kvs_show(int fd) {
-  //FIXME The data that can be altered during its execution confirm with (Daniel Reis).
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
@@ -131,9 +130,7 @@ void kvs_show(int fd) {
   write(fd, buffer, offset);
 }
 
-void kvs_show_backup(int fd) {
-  //FIXME A thread safe version, used for backups (Maybe use the same for both things, confirm with Daniel Reis)
-  // This function needs to take a sanpshot of the hashtable for the backup.
+void kvs_show_backup(int fd) { // Thread safe version of kvs_show
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
