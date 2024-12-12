@@ -192,7 +192,9 @@ void cmd_backup(Job* job, JobQueue* queue) {
   "%s-%d.bck", temp_path, job->backup_counter);
   backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 for null terminator
 
-  kvs_backup(backup_out_file_path, queue);
+  if (kvs_backup(backup_out_file_path, queue))
+    fprintf(stderr, "Failed to perform backup.\n");
+
   job->backup_counter++;
   
   free(backup_out_file_path);
@@ -236,8 +238,19 @@ void read_file(Job* job, JobQueue* queue) {
         cmd_backup(job, queue);
         break;
       case CMD_INVALID:
+        fprintf(stderr, "Invalid command. See HELP for usage\n");
         break;
       case CMD_HELP:
+      /*printf( 
+            "Available commands:\n"
+            "  WRITE [(key,value)(key2,value2),...]\n"
+            "  READ [key,key2,...]\n"
+            "  DELETE [key,key2,...]\n"
+            "  SHOW\n"
+            "  WAIT <delay_ms>\n"
+            "  BACKUP\n" // Not implemented
+            "  HELP\n"
+        );*/ //FIXME: Ask Daniel Reis
       case CMD_EMPTY:
       case EOC:
         break;

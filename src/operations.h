@@ -56,6 +56,7 @@ void kvs_wait(unsigned int delay_ms, int fd);
 /// backup file.
 /// @param backup_out_file_path Path to the backup output file.
 /// @param queue Pointer to the job queue.
-void kvs_backup(char* backup_out_file_path, JobQueue* queue);
+/// @return 0 if the backup was successful, 1 otherwise.
+int kvs_backup(char* backup_out_file_path, JobQueue* queue);
 
 #endif  // KVS_OPERATIONS_H

@@ -174,7 +174,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   nanosleep(&delay, NULL);
 }
 
-void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
+int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   extern pthread_mutex_t backup_mutex;
   extern int concurrent_backups;
   extern int max_concurrent_backups;
@@ -202,10 +202,18 @@ void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   }
 
   pid = fork();
+  
+  if (pid < 0) {
+    return 1; // Fork failed
+  }
+
   if (pid == 0) {
     // This is the child process
     int backup_output_fd = open(backup_out_file_path,
     O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (backup_output_fd < 0) {
+      _exit(EXIT_FAILURE); // Failed to open file
+    }
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     free(backup_out_file_path);
@@ -220,4 +228,5 @@ void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   backup_forks_pids[concurrent_backups] = pid;
   concurrent_backups++;
   pthread_mutex_unlock(&backup_mutex);
+  return 0;
 }
