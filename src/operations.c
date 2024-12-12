@@ -4,8 +4,6 @@
 
 static struct HashTable* hash_table = NULL;
 
-pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 /// Calculates a timespec from a delay in milliseconds.
 /// @param delay_ms Delay in milliseconds.
 /// @return Timespec with the given delay.
@@ -177,6 +175,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
 }
 
 void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
+  extern pthread_mutex_t backup_mutex;
   extern int concurrent_backups;
   extern int max_concurrent_backups;
   extern pid_t *backup_forks_pids;
@@ -213,7 +212,7 @@ void kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     free(backup_forks_pids);
     destroy_jobs_queue(queue);
     kvs_terminate(STDERR_FILENO);
-    exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
   }
 
   // This is the parent process

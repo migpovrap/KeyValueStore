@@ -2,9 +2,10 @@ SHELL := /bin/bash
 CC = gcc
 
 # Para mais informações sobre as flags de warning, consulte a informação adicional no lab_ferramentas
-CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L \
+CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
 		 -Wall -Werror -Wextra \
-		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused
+		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
+		 -fsanitize=address -fsanitize=undefined
 
 # Flags for Valgrind
 VALGRIND_CFLAGS = -g -O0 -std=c17 -D_POSIX_C_SOURCE=200809L \
@@ -35,7 +36,6 @@ rm:
 	@rm -f ../tests-public/jobs/*.bck
 	@rm -f ../tests-public/jobs2/*/*.out
 	@rm -f ../tests-public/jobs2/*/*.bck
-	@$(MAKE) -s clean
 
 clean:
 	@rm -f ../tests-public/kvs
@@ -48,7 +48,7 @@ format:
 
 # Runs with a max of two forks and single threadhed
 test_private: kvs
-	@export MallocNanoZone=0 && ./kvs ../jobs 2 3
+	@export MallocNanoZone=0 && ./kvs ../jobs 79 456
 	@echo "Test runned sucessfully, not using diff thread execution order cannot be predicted."
 	@$(MAKE) -s clean
 
@@ -60,4 +60,11 @@ test_public: kvs
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 2 2
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
+
+stress_test: kvs
+	@for i in {1..50}; do \
+			export MallocNanoZone=0 && ./kvs ../jobs 200 150; \
+			$(MAKE) -s rm; \
+			echo "Run $$i completed"; \
+	done

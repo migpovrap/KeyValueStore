@@ -7,10 +7,12 @@ READ [chave2]
 #Escrita de uma chave nova e outra existente
 WRITE [(chave2,valor-exemplo2)(umaChave,umValor)]
 # backup 
+
 BACKUP
+
 # Eliminação de chave existente e de chave não existente
 DELETE [c1,chaveAleatoria]
 #Espera de um segundo
-WAIT 1000
+#WAIT 1000
 # Impressão de toda a tabela
 SHOW

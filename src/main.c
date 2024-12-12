@@ -17,6 +17,7 @@
 int max_concurrent_backups;
 pid_t *backup_forks_pids;
 int concurrent_backups = 0;
+pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[]) {
 
@@ -34,6 +35,7 @@ int main(int argc, char *argv[]) {
   }
   max_concurrent_backups = atoi(argv[2]);
   int max_threads = atoi(argv[3]);
+  int num_threads = 0;
 
   JobQueue *queue = create_job_queue(argv[1]);
 
@@ -41,19 +43,30 @@ int main(int argc, char *argv[]) {
   backup_forks_pids = (pid_t *) malloc(
   sizeof(pid_t) * (size_t) max_concurrent_backups);
 
-  for (int i = 0; i < max_threads && i < queue->num_files; ++i)
-    pthread_create(&threads[i], NULL, process_file, (void *)queue);
+  // Initialize backup_forks_pids array
+  for (int i = 0; i < max_concurrent_backups; ++i) {
+      backup_forks_pids[i] = -1; // Initialize with invalid PID
+  }
 
-  for (int i = 0; i < max_threads && queue->num_files; ++i)
+  for (int i = 0; i < max_threads && i < queue->num_files; ++i) {
+    pthread_create(&threads[i], NULL, process_file, (void *)queue);
+    ++num_threads;
+  }
+
+  for (int i = 0; i < num_threads; ++i)
     pthread_join(threads[i], NULL);
+    
 
   for (int i = 0; i < max_concurrent_backups; i++) {
-    kill(backup_forks_pids[i], SIGTERM);
-    waitpid(backup_forks_pids[i], NULL, 0);
+    if (backup_forks_pids[i] >= 0) {
+      kill(backup_forks_pids[i], SIGTERM);
+      waitpid(backup_forks_pids[i], NULL, 0);
+    }
   }
 
   free(backup_forks_pids);
   destroy_jobs_queue(queue);
+  pthread_mutex_destroy(&backup_mutex);
   kvs_terminate(STDERR_FILENO);
   return 0;
 }

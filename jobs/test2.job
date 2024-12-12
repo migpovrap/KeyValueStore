@@ -11,6 +11,6 @@ BACKUP
 # Eliminação de chave existente e de chave não existente
 DELETE [key1,nonexistentKey]
 #Espera de dois segundos
-WAIT 2000
+#WAIT 2000
 # Impressão de toda a tabela
 SHOW

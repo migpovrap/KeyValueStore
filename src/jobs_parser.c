@@ -85,8 +85,8 @@ char *dir_path) {
     dir_path, current_file->d_name);
     job_file_path = realloc(job_file_path, path_len + 1); // +1 for null terminator
     initialize_job(current_job, job_file_path);
-    enqueue_job(*queue, current_job);
     free(job_file_path);
+    enqueue_job(*queue, current_job);
   } else if (current_file->d_type == 4 && strcmp(current_file->d_name, ".") != 0\
   && strcmp(current_file->d_name, "..") != 0) {
     char *nested_path = malloc(PATH_MAX);
