@@ -65,3 +65,6 @@ kvs
 
 # Ignore diff files
 *.diff
+
+# Lizard output
+lizard_output.log
