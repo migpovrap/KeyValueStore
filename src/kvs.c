@@ -32,10 +32,10 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
   // Search for the key node
   while (key_node != NULL) {
     if (strcmp(key_node->key, key) == 0) {
-      char *temp = strdup(value);
-      free(key_node->value);
-      key_node->value = NULL;
-      key_node->value = temp;
+      char *temp = key_node->value;
+      key_node->value = strdup(value);
+      free(temp);
+      temp = NULL;
       return 0;
     }
     key_node = key_node->next; // Move to the next node
