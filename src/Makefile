@@ -47,17 +47,17 @@ format:
 	@clang-format -i *.c *.h
 
 test: kvs
-	@{ time ./kvs ../jobs 7 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
+	@{ time ./kvs ../jobs 1 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 1 2
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 4 3
 	@$(MAKE) -s clean
 
 stress_test: kvs
 	@for i in {1..50}; do \
-		./kvs ../jobs 3 7; \
+		./kvs ../jobs 12 24; \
 		$(MAKE) -s rm; \
 		echo "Run $$i completed"; \
 	done
