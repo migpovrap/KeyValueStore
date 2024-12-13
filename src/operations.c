@@ -78,7 +78,7 @@ char values[][MAX_STRING_SIZE], int fd) {
 
   lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
 
-  for (size_t i = 0; i < num_pairs; i++)
+  for (size_t i = 0; i < num_pairs; ++i)
     if (write_pair(hash_table, keys[i], values[i]) != 0)
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
       "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
@@ -104,7 +104,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
 
   lock_unlock_hashes(keys, num_pairs, READ_LOCK);
 
-  for (size_t i = 0; i < num_pairs; i++) {
+  for (size_t i = 0; i < num_pairs; ++i) {
     char* result = read_pair(hash_table, keys[i]);
     if (result == NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
@@ -165,7 +165,7 @@ void kvs_show(int fd) {
   for (int i = 0; i < TABLE_SIZE; i++)
     pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
 
-  for (int i = 0; i < TABLE_SIZE; i++) {
+  for (int i = 0; i < TABLE_SIZE; ++i) {
     KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
@@ -174,7 +174,7 @@ void kvs_show(int fd) {
     }
   }
 
-  for (int i = 0; i < TABLE_SIZE; i++)
+  for (int i = 0; i < TABLE_SIZE; ++i)
     pthread_rwlock_unlock(&hash_table->hash_lock[i]);
 
   if (write(fd, buffer, offset) == -1)
@@ -194,7 +194,7 @@ void kvs_show_backup(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  for (int i = 0; i < TABLE_SIZE; i++) {
+  for (int i = 0; i < TABLE_SIZE; ++i) {
     KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
       size_t len_key = strlen(key_node -> key);
@@ -276,8 +276,7 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
 
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
-  backup_forks_pids[concurrent_backups] = pid;
-  concurrent_backups++;
+  backup_forks_pids[concurrent_backups++] = pid;
   pthread_mutex_unlock(&backup_mutex);
   return 0;
 }

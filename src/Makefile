@@ -16,17 +16,17 @@ endif
 
 all: kvs
 	@if [ ! -f ../lizard_output.log ]; then \
-		lizard -L 50 -T nloc=50 -m *.c | tee ../lizard_output.log; \
+		lizard -L 50 -T nloc=50 -a 4 -m *.c | tee ../lizard_output.log; \
 	fi
 
-kvs: main.c constants.h operations.o parser.o kvs.o jobs_parser.o
+kvs: main.c constants.h operations.o parser.o jobs_parser.o kvs.o
 	@$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o -lpthread
 
 %.o: %.c %.h
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: kvs
-	@export MallocNanoZone=0 && ./kvs ../jobs 7 3
+	@./kvs ../jobs 7 3
 
 rm: # Removes job outs and backups.
 	@rm -rf ../jobs/*.out ../jobs/**/*.out
@@ -63,7 +63,7 @@ valgrind: kvs
 
 stress_test: kvs
 	@for i in {1..50}; do \
-		export MallocNanoZone=0 && ./kvs ../jobs 200 150; \
+		./kvs ../jobs 200 150; \
 		$(MAKE) -s rm; \
 		echo "Run $$i completed"; \
 	done
