@@ -58,7 +58,7 @@ test_public: kvs
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
+	valgrind --leak-check=full -s --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
 	@$(MAKE) -s clean
 
 stress_test: kvs

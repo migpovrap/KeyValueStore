@@ -234,29 +234,8 @@ void kvs_wait(unsigned int delay_ms, int fd) {
 }
 
 int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
-  extern pthread_mutex_t backup_mutex;
-  extern int concurrent_backups;
-  extern int max_concurrent_backups;
-  extern pid_t *backup_forks_pids;
+  extern sem_t backup_semaphore;
   pid_t pid;
-  while (1) {
-    pthread_mutex_lock(&backup_mutex);
-    if (concurrent_backups < max_concurrent_backups) {
-      pthread_mutex_unlock(&backup_mutex);
-      break;
-    }
-    pthread_mutex_unlock(&backup_mutex);
-    pid_t exited_pid = wait(NULL);
-    pthread_mutex_lock(&backup_mutex);
-    for (int i = 0; i < concurrent_backups; ++i)
-      if (backup_forks_pids[i] == exited_pid) {
-        for (int j = i; j < concurrent_backups - 1; ++j)
-          backup_forks_pids[j] = backup_forks_pids[j + 1];
-        concurrent_backups--;
-        break;
-      }
-    pthread_mutex_unlock(&backup_mutex);
-  }
 
   pid = fork();
   if (pid < 0) return 1; // Fork failed
@@ -271,18 +250,10 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     close(backup_output_fd);
     free(backup_out_file_path);
     backup_out_file_path = NULL;
-    free(backup_forks_pids);
-    backup_forks_pids = NULL;
     destroy_jobs_queue(queue);
     queue = NULL;
     kvs_terminate();
     _exit(EXIT_SUCCESS);
   }
-
-  // This is the parent process
-  pthread_mutex_lock(&backup_mutex);
-  printf("Backup process num, %d\n", concurrent_backups);
-  backup_forks_pids[concurrent_backups++] = pid;
-  pthread_mutex_unlock(&backup_mutex);
   return 0;
 }

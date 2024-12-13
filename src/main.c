@@ -14,10 +14,7 @@
   *endptr != '\0'; \
 })
 
-int max_concurrent_backups;
-pid_t *backup_forks_pids;
-int concurrent_backups = 0;
-pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
+sem_t backup_semaphore;
 
 int main(int argc, char *argv[]) {
 
@@ -31,18 +28,12 @@ int main(int argc, char *argv[]) {
     <max_number_threads>\n", argv[0]);
     return 1;
   }
-
+  
   JobQueue *queue = create_job_queue(argv[1]);
-  max_concurrent_backups = atoi(argv[2]);
+  sem_init(&backup_semaphore, 0, atoi(argv[2])); // 0 means semaphore is shared between threads of the same process
   int max_threads = atoi(argv[3]);
   int max_files = queue->num_files;
   pthread_t threads[max_threads];
-
-  backup_forks_pids = (pid_t *) malloc(
-  sizeof(pid_t) * (size_t) max_concurrent_backups);
-
-  for (int i = 0; i < max_concurrent_backups; ++i)
-    backup_forks_pids[i] = -1; // Initialize with an invalid PID
 
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_create(&threads[i], NULL, process_file, (void *)queue);
@@ -50,17 +41,9 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_join(threads[i], NULL);
 
-  for (int i = 0; i < max_concurrent_backups; i++)
-    if (backup_forks_pids[i] >= 0) {
-      kill(backup_forks_pids[i], SIGTERM);
-      waitpid(backup_forks_pids[i], NULL, 0);
-    }
-
-  free(backup_forks_pids);
-  backup_forks_pids = NULL;
+  sem_destroy(&backup_semaphore);
   destroy_jobs_queue(queue);
   queue = NULL;
-  pthread_mutex_destroy(&backup_mutex);
   kvs_terminate();
   return 0;
 }
