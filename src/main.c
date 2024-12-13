@@ -45,8 +45,11 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_join(threads[i], NULL);
   
-  while (sem_trywait(&backup_semaphore) != 0); // Waits for all child processes to end.
-  
+  while (sem_trywait(&backup_semaphore) != 0) {
+    struct timespec delay = delay_to_timespec(1);
+    nanosleep(&delay, NULL);
+  }
+
   atomic_store(&child_terminated, -1);
   pthread_join(semaphore_thread, NULL);
 

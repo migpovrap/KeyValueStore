@@ -5,12 +5,7 @@
 
 static struct HashTable* hash_table = NULL;
 
-/**
- * Calculates a timespec from a delay in milliseconds.
- * @param delay_ms Delay in milliseconds.
- * @return Timespec with the given delay.
- */
-static struct timespec delay_to_timespec(unsigned int delay_ms) {
+struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
 
@@ -28,7 +23,6 @@ int kvs_terminate() {
   hash_table = NULL;
   return 0;
 }
-
 
 /**
  * @brief Locks or unlocks hash table entries based on the provided keys and lock type.
@@ -249,11 +243,14 @@ void signal_child_terminated() {
 void* checks_for_terminated_chlidren() {
   extern sem_t backup_semaphore;
   extern _Atomic int child_terminated;
-    while (atomic_load(&child_terminated) != -1)
+    while (atomic_load(&child_terminated) != -1) {
       if (atomic_load(&child_terminated) == 1) {
         atomic_store(&child_terminated, 0);
           while (waitpid(-1, NULL, WNOHANG) > 0)
             sem_post(&backup_semaphore);
-        }
+      }
+      struct timespec delay = delay_to_timespec(1);
+      nanosleep(&delay, NULL);
+    }      
   return NULL;
 }

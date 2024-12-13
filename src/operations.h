@@ -23,6 +23,13 @@ typedef enum {
   WRITE_UNLOCK
 } LOCK_TYPE;
 
+/**
+ * Calculates a timespec from a delay in milliseconds.
+ * @param delay_ms Delay in milliseconds.
+ * @return Timespec with the given delay.
+ */
+struct timespec delay_to_timespec(unsigned int delay_ms);
+
 /** 
  * Initializes the KVS state.
  * @return 0 if the KVS state was initialized successfully, 1 otherwise.
