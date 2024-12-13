@@ -21,10 +21,8 @@ pthread_mutex_t backup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[]) {
 
-  if (kvs_init(STDERR_FILENO)) {
-    char error_message[256];
-    snprintf(error_message, sizeof(error_message), "Failed to initialize KVS\n");
-    write(STDERR_FILENO, error_message, sizeof(error_message));
+  if (kvs_init()) {
+    fprintf(stderr, "Failed to initialize KVS\n");
     return 1;
   }
 
@@ -46,9 +44,8 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < max_concurrent_backups; ++i)
     backup_forks_pids[i] = -1; // Initialize with an invalid PID
 
-  for (int i = 0; i < max_threads && i < max_files; ++i) {
+  for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_create(&threads[i], NULL, process_file, (void *)queue);
-  }
 
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_join(threads[i], NULL);
@@ -62,6 +59,6 @@ int main(int argc, char *argv[]) {
   free(backup_forks_pids);
   destroy_jobs_queue(queue);
   pthread_mutex_destroy(&backup_mutex);
-  kvs_terminate(STDERR_FILENO);
+  kvs_terminate();
   return 0;
 }

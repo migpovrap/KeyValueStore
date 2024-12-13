@@ -12,7 +12,7 @@ void initialize_job(Job *job, const char *file_path) {
   job->job_file_path = strdup(file_path);
   job->job_fd = -1;
   job->job_output_fd = -1;
-  job->backup_counter = 1;
+  job->backup_counter = 1; // Since naming scheme for backups starts at 1.
   job->next = NULL;
 }
 
@@ -41,9 +41,8 @@ void enqueue_job(JobQueue *queue, Job *job) {
     queue->current_job = job;
   } else {
     Job *temp = queue->current_job;
-    while (temp->next != NULL) {
+    while (temp->next != NULL)
       temp = temp->next;
-    }
     temp->next = job;
   }
   queue->num_files++;
@@ -54,6 +53,8 @@ void enqueue_job(JobQueue *queue, Job *job) {
  * @brief Removes a job from the queue.
  * 
  * @param queue The job queue.
+ * @return Job* The job data removed from the queue, or NULL if the queue is empty.
+ *
  * @return Job* The job data removed from the queue.
  */
 Job* dequeue_job(JobQueue *queue) {
@@ -70,11 +71,15 @@ Job* dequeue_job(JobQueue *queue) {
 }
 
 /**
- * @brief Creates jobs and adds them to the job queue.
+ * @brief Recursively creates jobs from files in a directory and adds them to the job queue.
  * 
- * @param queue The job queue
- * @param current_file 
- * @param dir_path The path to the directory containing job entries.
+ * This function checks if the current file is a job file or a directory. If it's a job file,
+ * it initializes a Job structure and enqueues it. If it's a directory, it recursively processes
+ * the directory to find more job files.
+ * 
+ * @param queue Pointer to the job queue.
+ * @param current_file Pointer to the current directory entry.
+ * @param dir_path Path to the directory containing job entries.
  */
 void create_jobs(JobQueue **queue, struct dirent *current_file,
 char *dir_path) {
@@ -96,7 +101,7 @@ char *dir_path) {
     DIR *nested_dir = opendir(nested_path);
     if (nested_dir != NULL)
       while ((current_file = readdir(nested_dir)) != NULL)
-        create_jobs(queue, current_file, nested_path);
+        create_jobs(queue, current_file, nested_path); // Recursive call
     closedir(nested_dir);
     free(nested_path);
   }
@@ -113,22 +118,16 @@ JobQueue *create_job_queue(char *dir_path) {
   return queue;
 }
 
-// Destructively sorts keys in alphabetical order using insertion sort.
-void sort_keys_alphabetically(char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
-size_t num_pairs) {
-  for (size_t i = 1; i < num_pairs; ++i) {
-    char temp[MAX_STRING_SIZE];
-    strcpy(temp, (*keys)[i]);
-    size_t j = i - 1;
-    
-    while (strcmp(temp, (*keys)[j]) < 0) {
-      strcpy((*keys)[j + 1], (*keys)[j]);
-      --j;
-    }
-    strcpy((*keys)[j + 1], temp);
-  }
-}
-
+/**
+ * @brief Handles the write command for a job.
+ *
+ * This function parses the write command from the job's file descriptor,
+ * extracts the key-value pairs, and writes them to the key-value store.
+ *
+ * @param job Pointer to the Job structure containing job details.
+ * @param keys Pointer to a 2D array to store the keys.
+ * @param values Pointer to a 2D array to store the values.
+ */
 void cmd_write(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
 char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
@@ -138,12 +137,19 @@ char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   if (num_pairs == 0)
     fprintf(stderr, "Invalid command. See HELP for usage.\n");
 
-  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
-
   if (kvs_write(num_pairs, *keys, *values, job->job_output_fd))
     fprintf(stderr, "Failed to write pair.\n");
 }
 
+/**
+ * @brief Reads key-value pairs from a job file descriptor and processes them.
+ *
+ * This function reads key-value pairs from the job's file descriptor, parses them,
+ * and attempts to read the corresponding values from the key-value store.
+ *
+ * @param job A pointer to the Job structure containing job-related information.
+ * @param keys A pointer to an array where the parsed keys will be stored.
+ */
 void cmd_read(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
   num_pairs = parse_read_delete(job->job_fd, *keys,
@@ -151,13 +157,21 @@ void cmd_read(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
 
   if (num_pairs == 0)
     fprintf(stderr, "Invalid command. See HELP for usage.\n");
-  
-  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
 
   if (kvs_read(num_pairs, *keys, job->job_output_fd))
     fprintf(stderr, "Failed to read pair.\n");
 }
 
+/**
+ * @brief Deletes key-value pairs based on the provided job.
+ *
+ * This function parses the keys from the job's file descriptor and attempts to delete
+ * the corresponding key-value pairs from the key-value store. If the command is invalid
+ * or if the deletion fails, appropriate error messages are printed to stderr.
+ *
+ * @param job Pointer to the Job structure containing job details.
+ * @param keys Pointer to a 2D array where parsed keys will be stored.
+ */
 void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
   num_pairs = parse_read_delete(job->job_fd, *keys,
@@ -165,13 +179,19 @@ void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
 
   if (num_pairs == 0)
     fprintf(stderr, "Invalid command. See HELP for usage.\n");
-  
-  sort_keys_alphabetically(keys, num_pairs); // Sorting to avoid deadlocks.
 
   if (kvs_delete(num_pairs, *keys, job->job_output_fd))
     fprintf(stderr, "Failed to delete pair.\n");
 }
 
+/**
+ * @brief Executes a wait command for a job.
+ *
+ * This function parses the wait command from the job's file descriptor,
+ * retrieves the delay value, and writes waiting to the job's output file.
+ *
+ * @param job Pointer to the Job structure containing job details.
+ */
 void cmd_wait(Job* job) {
   unsigned int delay;
 
@@ -182,6 +202,16 @@ void cmd_wait(Job* job) {
     kvs_wait(delay, job->job_output_fd);
 }
 
+/**
+ * @brief Performs a backup of the job file and increments the backup counter.
+ *
+ * This function creates a backup of the job file specified in the Job structure.
+ * The backup file is named by appending the backup counter to the original file name.
+ * The backup counter is then incremented.
+ *
+ * @param job A pointer to the Job structure containing the job file path and backup counter.
+ * @param queue A pointer to the JobQueue structure used for the backup operation.
+ */
 void cmd_backup(Job* job, JobQueue* queue) {
   char *backup_out_file_path = malloc(PATH_MAX);
   strcpy(backup_out_file_path, job->job_file_path);
@@ -196,10 +226,19 @@ void cmd_backup(Job* job, JobQueue* queue) {
     fprintf(stderr, "Failed to perform backup.\n");
 
   job->backup_counter++;
-  
   free(backup_out_file_path);
 }
 
+/**
+ * @brief Reads a job file and processes commands, writing output to a specified file.
+ *
+ * This function reads commands from a job file and processes them accordingly.
+ * It supports various commands such as write, read, delete, show, wait, and backup.
+ * The output of the commands is written to a specified output file.
+ *
+ * @param job A pointer to the Job structure containing job details.
+ * @param queue A pointer to the JobQueue structure for managing job backups.
+ */
 void read_file(Job* job, JobQueue* queue) {
   char *job_out_file_path = malloc(PATH_MAX);
   strcpy(job_out_file_path, job->job_file_path);

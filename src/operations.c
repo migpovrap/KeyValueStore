@@ -4,65 +4,89 @@
 
 static struct HashTable* hash_table = NULL;
 
-/// Calculates a timespec from a delay in milliseconds.
-/// @param delay_ms Delay in milliseconds.
-/// @return Timespec with the given delay.
+/**
+ * Calculates a timespec from a delay in milliseconds.
+ * @param delay_ms Delay in milliseconds.
+ * @return Timespec with the given delay.
+ */
 static struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
 
-int kvs_init(int fd) {
+int kvs_init() {
   if (hash_table != NULL) {
-    char buffer[PIPE_BUF];
-    size_t buff_size = sizeof(buffer);
-    size_t offset = 0;
-    offset += (size_t)snprintf(buffer + offset, buff_size - offset,
-    "KVS state has already been initialized\n");
-    write(fd, buffer, offset);
+    fprintf(stderr, "KVS state has already been initialized\n");
     return 1;
   }
+  
   hash_table = create_hash_table();
   return hash_table == NULL; // Checks if the HashTable was created successfully
 }
 
-int kvs_terminate(int fd) {
+int kvs_terminate() {
   if (hash_table == NULL) {
-    char buffer[PIPE_BUF];
-    size_t buff_size = sizeof(buffer);
-    size_t offset = 0;
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-    "KVS state must be initialized\n");
-    write(fd, buffer, offset);
+    fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
   free_table(hash_table);
   return 0;
 }
 
+
+/**
+ * @brief Locks or unlocks hash table entries based on the provided keys and lock type.
+ *
+ * Ensures locks are always locked and unlocked in a specific order to avoid deadlocks.
+ * 
+ * @param keys An array of strings representing the keys to be locked or unlocked.
+ * @param num_pairs The number of key-value pairs.
+ * @param type The type of lock operation to perform (READ_LOCK, WRITE_LOCK, READ_UNLOCK, WRITE_UNLOCK)
+ */
+void lock_unlock_hashes(char keys[][MAX_STRING_SIZE], size_t num_pairs, LOCK_TYPE type) {
+  int HASH_LOCK_BITMAP[TABLE_SIZE] = {0};
+  
+  for (size_t i = 0; i < num_pairs; ++i)
+    HASH_LOCK_BITMAP[hash(keys[i])] = 1;
+
+  for (int i = 0; i < TABLE_SIZE; ++i)
+    if (HASH_LOCK_BITMAP[i])
+      switch (type) {
+        case READ_LOCK:
+          pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
+          break;
+        case WRITE_LOCK:
+          pthread_rwlock_wrlock(&hash_table->hash_lock[i]);
+          break;
+        case READ_UNLOCK:
+          pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+          break;
+        case WRITE_UNLOCK:
+          pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+          break;
+      }
+}
+
 int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], 
-  char values[][MAX_STRING_SIZE], int fd) {
+char values[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   if (hash_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-    "KVS state must be initialized\n");
-    write(fd, buffer, offset);
+    fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
 
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_rdlock(&hash_table->hash_lock[hash(keys[i])]);
+  lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
 
   for (size_t i = 0; i < num_pairs; i++)
     if (write_pair(hash_table, keys[i], values[i]) != 0)
       offset += (size_t) snprintf(buffer + offset, buff_size - offset,
       "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
   
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
+  lock_unlock_hashes(keys, num_pairs, WRITE_UNLOCK);
 
-  write(fd, buffer, offset);
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
   return 0;
 }
 
@@ -70,16 +94,15 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
+
   if (hash_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-    "KVS state must be initialized\n");
-    write(fd, buffer, offset);
+    fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
+
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
 
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_wrlock(&hash_table->hash_lock[hash(keys[i])]);
+  lock_unlock_hashes(keys, num_pairs, READ_LOCK);
 
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(hash_table, keys[i]);
@@ -93,11 +116,11 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     free(result);
   }
 
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
-  
+  lock_unlock_hashes(keys, num_pairs, READ_UNLOCK);
+
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
-  write(fd, buffer, offset);
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
   return 0;
 }
 
@@ -106,15 +129,12 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
   if (hash_table == NULL) {
-    offset += (size_t) snprintf(buffer + offset, buff_size - offset,
-    "KVS state must be initialized\n");
-    write(fd, buffer, offset);
+    fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
   int aux = 0;
 
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_rdlock(&hash_table->hash_lock[hash(keys[i])]);
+  lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
   
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(hash_table, keys[i]) != 0) {
@@ -127,13 +147,13 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
     }
   }
 
-  for (size_t i = 0; i < num_pairs; i++)
-    pthread_rwlock_unlock(&hash_table->hash_lock[hash(keys[i])]);
+  lock_unlock_hashes(keys, num_pairs, WRITE_UNLOCK);
 
-  if (aux) {
+  if (aux)
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
-  }
-  write(fd, buffer, offset);
+
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
   return 0;
 }
 
@@ -141,7 +161,10 @@ void kvs_show(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  pthread_rwlock_rdlock(&hash_table->table_lock);
+
+  for (int i = 0; i < TABLE_SIZE; i++)
+    pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
+
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = hash_table->table[i];
     while (key_node != NULL) {
@@ -150,11 +173,24 @@ void kvs_show(int fd) {
       key_node = key_node->next;
     }
   }
-  pthread_rwlock_unlock(&hash_table->table_lock);
-  write(fd, buffer, offset);
+
+  for (int i = 0; i < TABLE_SIZE; i++)
+    pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
 }
 
-void kvs_show_backup(int fd) { // Thread safe version of kvs_show
+/**
+ * @brief Thread-safe version of kvs_show using memcpy that writes the contents of the hash table to a file descriptor.
+ *
+ * This function iterates through the hash table and writes each key-value pair to the provided file descriptor
+ * in the format "(key, value)\n". It ensures that the buffer does not overflow by checking the available space
+ * before writing each key-value pair.
+ *
+ * @param fd The file descriptor to which the hash table contents will be written.
+ */
+void kvs_show_backup(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
@@ -179,7 +215,8 @@ void kvs_show_backup(int fd) { // Thread safe version of kvs_show
       key_node = key_node->next;
     }
   }
-  write(fd, buffer, offset);
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
 }
 
 void kvs_wait(unsigned int delay_ms, int fd) {
@@ -188,7 +225,8 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   size_t offset = 0;
   offset += (size_t) snprintf(buffer + offset, buff_size - offset,
   "Waiting...\n");
-  write(fd, buffer, offset);
+  if (write(fd, buffer, offset) == -1)
+    fprintf(stderr, "Error during writing.\n");
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
 }
@@ -230,9 +268,8 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     // This is the child process
     int backup_output_fd = open(backup_out_file_path,
     O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (backup_output_fd < 0) {
-      _exit(EXIT_FAILURE); // Failed to open file
-    }
+    if (backup_output_fd < 0) // Failed to open file
+      _exit(EXIT_FAILURE);
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     free(backup_out_file_path);

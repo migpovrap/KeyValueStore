@@ -9,14 +9,12 @@ static int read_string(int fd, char *buffer, size_t max) {
   while (i < max) {
     bytes_read = read(fd, &ch, 1);
 
-    if (bytes_read <= 0) {
+    if (bytes_read <= 0) 
       return -1;
-    }
 
-    if (ch == ' ') {
+    if (ch == ' ')
       return -1;
-    }
-
+  
     if (ch == ',') {
       value = 0;
       break;
@@ -137,10 +135,8 @@ enum Command parse_h(int fd, char buff[16]) {
 
 enum Command get_next(int fd) {
   char buff[16];
-  if (read(fd, buff, 1) != 1) {
+  if (read(fd, buff, 1) != 1)
     return EOC;
-  }
-
   switch (buff[0]) {
     case 'W':
       return parse_w(fd, buff);
@@ -209,9 +205,8 @@ size_t parse_write(int fd, char keys[][MAX_STRING_SIZE],
       return 0;
     }
 
-    if (ch == ']') {
+    if (ch == ']')
       break;
-    }
   }
 
   if (num_pairs == max_pairs) {
@@ -247,9 +242,8 @@ size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE],
 
     strcpy(keys[num_keys++], key);
 
-    if (output == 2){
+    if (output == 2)
       break;
-    }
   }
 
   if (num_keys == max_keys) {

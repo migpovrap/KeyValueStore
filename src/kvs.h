@@ -18,38 +18,53 @@ typedef struct KeyNode {
 
 typedef struct HashTable {
   KeyNode *table[TABLE_SIZE];
-  pthread_rwlock_t table_lock;
   pthread_rwlock_t hash_lock[TABLE_SIZE];
 } HashTable;
 
 //TODO: Add description.  
 int hash(const char *key);
 
-/// Creates a new event hash table.
-/// @return Newly created hash table, NULL on failure
+/** 
+ * Creates a new event hash table.
+ * 
+ * This function allocates memory for a new hash table and initializes its
+ * entries to NULL. It also initializes read-write locks for each entry in
+ * the hash table.
+ * 
+ * @return Pointer to newly created hash table, NULL on failure
+ */
 struct HashTable *create_hash_table();
 
-/// Appends a new key value pair to the hash table.
-/// @param ht Hash table to be modified.
-/// @param key Key of the pair to be written.
-/// @param value Value of the pair to be written.
-/// @return 0 if the node was appended successfully, 1 otherwise.
+/**
+ * Appends a new key value pair to the hash table.
+ * @param ht Hash table to be modified.
+ * @param key Key of the pair to be written.
+ * @param value Value of the pair to be written.
+ * @return 0 if the node was appended successfully, 1 otherwise.
+ */
 int write_pair(HashTable *ht, const char *key, const char *value);
 
-/// Deletes the value of given key.
-/// @param ht Hash table to delete from.
-/// @param key Key of the pair to be deleted.
-/// @return 0 if the node was deleted successfully, 1 otherwise.
+/**
+ * Deletes the value of given key.
+ * 
+ * @param ht Hash table to delete from.
+ * @param key Key of the pair to be deleted.
+ * @return 0 if the node was deleted successfully, 1 otherwise.
+ */
 char* read_pair(HashTable *ht, const char *key);
 
-/// Appends a new node to the list.
-/// @param list Event list to be modified.
-/// @param key Key of the pair to read.
-/// @return 0 if the node was appended successfully, 1 otherwise.
+/**
+ * Appends a new node to the list.
+ * @param list Event list to be modified.
+ * @param key Key of the pair to read.
+ * @return 0 if the node was appended successfully, 1 otherwise.
+ */
 int delete_pair(HashTable *ht, const char *key);
 
-/// Frees the hashtable.
-/// @param ht Hash table to be deleted.
+/**
+ * Frees the hashtable.
+ * @param ht Hash table to be deleted.
+ */
 void free_table(HashTable *ht);
 
 #endif  // KVS_H

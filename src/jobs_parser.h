@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "constants.h"
+#include "kvs.h"
 
 typedef struct Job {
   char *job_file_path;

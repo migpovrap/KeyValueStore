@@ -1,9 +1,11 @@
 #include "kvs.h"
 
-// Hash function based on key initial.
-// @param key Lowercase alphabetical string.
-// @return hash.
-// NOTE: This is not an ideal hash function, but is useful for test purposes of the project
+/**
+ * Hash function based on key initial.
+ * @param key Lowercase alphabetical string.
+ * @return hash.
+ * @note This is not an ideal hash function, but is useful for test purposes of the project
+ */
 int hash(const char *key) {
   int first_letter = tolower(key[0]);
   if (first_letter >= 'a' && first_letter <= 'z') {
@@ -21,7 +23,6 @@ struct HashTable* create_hash_table() {
     ht->table[i] = NULL;
     pthread_rwlock_init(&ht->hash_lock[i], NULL);
   }
-  pthread_rwlock_init(&ht->table_lock, NULL);
   return ht;
 }
 
@@ -31,9 +32,9 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
   // Search for the key node
   while (key_node != NULL) {
     if (strcmp(key_node->key, key) == 0) {
-      //TODO: Fix Maycock
+      char *temp = strdup(value);
       free(key_node->value);
-      key_node->value = strdup(value);
+      key_node->value = temp;
       return 0;
     }
     key_node = key_node->next; // Move to the next node
@@ -91,7 +92,8 @@ int delete_pair(HashTable *ht, const char *key) {
 }
 
 void free_table(HashTable *ht) {
-  pthread_rwlock_rdlock(&ht->table_lock);
+  for (int i=0; i < TABLE_SIZE; i++)
+    pthread_rwlock_rdlock(&ht->hash_lock[i]);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *key_node = ht->table[i];
     while (key_node != NULL) {
@@ -101,9 +103,10 @@ void free_table(HashTable *ht) {
       free(temp->value);
       free(temp);
     }
+  }
+  for (int i=0; i < TABLE_SIZE; i++) {
+    pthread_rwlock_unlock(&ht->hash_lock[i]);
     pthread_rwlock_destroy(&ht->hash_lock[i]);
   }
-  pthread_rwlock_unlock(&ht->table_lock);
-  pthread_rwlock_destroy(&ht->table_lock);
   free(ht);
 }
