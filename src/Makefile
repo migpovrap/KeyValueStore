@@ -46,7 +46,7 @@ format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	@clang-format -i *.c *.h
 
-test_private: kvs
+test: kvs
 	@{ time ./kvs ../jobs 7 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
