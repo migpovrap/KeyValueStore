@@ -1,6 +1,7 @@
 #include "operations.h"
 #include "kvs.h"
 #include "jobs_parser.h"
+#include "macros.h"
 
 static struct HashTable* hash_table = NULL;
 
@@ -14,20 +15,15 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
 }
 
 int kvs_init() {
-  if (hash_table != NULL) {
-    fprintf(stderr, "KVS state has already been initialized\n");
-    return 1;
-  }
-  
+  CHECK_NOT_NULL(hash_table, "KVS state has already been initialized.");
+
   hash_table = create_hash_table();
   return hash_table == NULL; // Checks if the HashTable was created successfully
 }
 
 int kvs_terminate() {
-  if (hash_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
-    return 1;
-  }
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
+
   free_table(hash_table);
   hash_table = NULL;
   return 0;
@@ -72,10 +68,7 @@ char values[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  if (hash_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
-    return 1;
-  }
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
 
   lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
 
@@ -86,8 +79,7 @@ char values[][MAX_STRING_SIZE], int fd) {
   
   lock_unlock_hashes(keys, num_pairs, WRITE_UNLOCK);
 
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
@@ -95,11 +87,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-
-  if (hash_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
-    return 1;
-  }
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
 
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
 
@@ -121,8 +109,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   lock_unlock_hashes(keys, num_pairs, READ_UNLOCK);
 
   offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
@@ -130,10 +117,8 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);
   size_t offset = 0;
-  if (hash_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
-    return 1;
-  }
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
+
   int aux = 0;
 
   lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
@@ -154,8 +139,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   if (aux)
     offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
 
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
@@ -179,8 +163,7 @@ void kvs_show(int fd) {
   for (int i = 0; i < TABLE_SIZE; ++i)
     pthread_rwlock_unlock(&hash_table->hash_lock[i]);
 
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
 }
 
 /**
@@ -217,8 +200,7 @@ void kvs_show_backup(int fd) {
       key_node = key_node->next;
     }
   }
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
 }
 
 void kvs_wait(unsigned int delay_ms, int fd) {
@@ -227,8 +209,7 @@ void kvs_wait(unsigned int delay_ms, int fd) {
   size_t offset = 0;
   offset += (size_t) snprintf(buffer + offset, buff_size - offset,
   "Waiting...\n");
-  if (write(fd, buffer, offset) == -1)
-    fprintf(stderr, "Error during writing.\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   struct timespec delay = delay_to_timespec(delay_ms);
   nanosleep(&delay, NULL);
 }

@@ -1,6 +1,7 @@
 #include "jobs_parser.h"
 #include "operations.h"
 #include "parser.h"
+#include "macros.h"
 
 /**
  * @brief Initializes a Job structure with the given file path.
@@ -82,7 +83,9 @@ void create_jobs(JobQueue **queue, struct dirent *current_file,
 char *dir_path) {
   if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
     Job *current_job = malloc(sizeof(Job));
+    CHECK_NULL(current_job, "Failed to alloc memory for job.");
     char *job_file_path = malloc(PATH_MAX);
+    CHECK_NULL(job_file_path, "Failed to alloc memory for job file path.");
     size_t path_len = (size_t) snprintf(job_file_path, PATH_MAX, "%s/%s",
     dir_path, current_file->d_name);
     job_file_path = realloc(job_file_path, path_len + 1); // +1 for null terminator
@@ -93,10 +96,12 @@ char *dir_path) {
   } else if (current_file->d_type == 4 && strcmp(current_file->d_name, ".") != 0\
   && strcmp(current_file->d_name, "..") != 0) {
     char *nested_path = malloc(PATH_MAX);
+    CHECK_NULL(nested_path, "Failed to alloc memory for job file path.");
     size_t nested_path_len = (size_t) snprintf(nested_path, PATH_MAX, "%s/%s",
     dir_path, current_file->d_name);
     nested_path = realloc(nested_path, nested_path_len + 1); // +1 for null terminator
     DIR *nested_dir = opendir(nested_path);
+    CHECK_NULL(nested_dir, "Failed to open sub-directory.");
     if (nested_dir != NULL)
       while ((current_file = readdir(nested_dir)) != NULL)
         create_jobs(queue, current_file, nested_path); // Recursive call
@@ -108,6 +113,7 @@ char *dir_path) {
 
 JobQueue *create_job_queue(char *dir_path) {
   DIR *dir = opendir(dir_path);
+  CHECK_NULL(dir, "Failed to open directory.");
   struct dirent *current_file;
   JobQueue *queue = malloc(sizeof(JobQueue));
   initialize_jobs_queue(queue);
@@ -133,11 +139,10 @@ char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   num_pairs = parse_write(job->job_fd, *keys, *values,
   MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  CHECK_NUM_PAIRS(num_pairs, "Invalid command. See HELP for usage.");
 
-  if (kvs_write(num_pairs, *keys, *values, job->job_output_fd))
-    fprintf(stderr, "Failed to write pair.\n");
+  CHECK_RETURN_ONE(kvs_write(num_pairs, *keys, *values, job->job_output_fd),
+  "Failed to write pair.");
 }
 
 /**
@@ -154,11 +159,10 @@ void cmd_read(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   num_pairs = parse_read_delete(job->job_fd, *keys,
   MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  CHECK_NUM_PAIRS(num_pairs, "Invalid command. See HELP for usage.");
 
-  if (kvs_read(num_pairs, *keys, job->job_output_fd))
-    fprintf(stderr, "Failed to read pair.\n");
+  CHECK_RETURN_ONE(kvs_read(num_pairs, *keys, job->job_output_fd),
+  "Failed to read pair.");
 }
 
 /**
@@ -176,11 +180,10 @@ void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   num_pairs = parse_read_delete(job->job_fd, *keys,
   MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
-  if (num_pairs == 0)
-    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  CHECK_NUM_PAIRS(num_pairs, "Invalid command. See HELP for usage.");
 
-  if (kvs_delete(num_pairs, *keys, job->job_output_fd))
-    fprintf(stderr, "Failed to delete pair.\n");
+  CHECK_RETURN_ONE(kvs_delete(num_pairs, *keys, job->job_output_fd),
+  "Failed to delete pair.");
 }
 
 /**
@@ -194,8 +197,8 @@ void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
 void cmd_wait(Job* job) {
   unsigned int delay;
 
-  if (parse_wait(job->job_fd, &delay, NULL) == -1)
-    fprintf(stderr, "Invalid command. See HELP for usage.\n");
+  CHECK_RETURN_MINUS_ONE(parse_wait(job->job_fd, &delay, NULL),
+  "Invalid command. See HELP for usage.");
 
   if (delay > 0)
     kvs_wait(delay, job->job_output_fd);
@@ -213,6 +216,7 @@ void cmd_wait(Job* job) {
  */
 void cmd_backup(Job* job, JobQueue* queue) {
   char *backup_out_file_path = malloc(PATH_MAX);
+  CHECK_NULL(backup_out_file_path, "Failed to allocate memory for backup file.");
   strcpy(backup_out_file_path, job->job_file_path);
   char temp_path[PATH_MAX];
   strcpy(temp_path, backup_out_file_path);
@@ -221,8 +225,7 @@ void cmd_backup(Job* job, JobQueue* queue) {
   "%s-%d.bck", temp_path, job->backup_counter);
   backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 for null terminator
 
-  if (kvs_backup(backup_out_file_path, queue))
-    fprintf(stderr, "Failed to perform backup.\n");
+  CHECK_RETURN_ONE(kvs_backup(backup_out_file_path, queue), "Failed to perform backup.");
 
   job->backup_counter++;
   free(backup_out_file_path);
@@ -241,6 +244,7 @@ void cmd_backup(Job* job, JobQueue* queue) {
  */
 void read_file(Job* job, JobQueue* queue) {
   char *job_out_file_path = malloc(PATH_MAX);
+  CHECK_NULL(job_out_file_path, "Failed to allocate memory for job output file.");
   strcpy(job_out_file_path, job->job_file_path);
   char temp_path[PATH_MAX];
   strcpy(temp_path, job_out_file_path);
@@ -249,8 +253,10 @@ void read_file(Job* job, JobQueue* queue) {
   "%sout", temp_path);
   job_out_file_path = realloc(job_out_file_path, path_len + 1); // +1 for null terminator
   job->job_fd = open(job->job_file_path, O_RDONLY);
+  CHECK_RETURN_MINUS_ONE(job->job_fd, "Failed to open job file.");
   job->job_output_fd = open(job_out_file_path,
   O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  CHECK_RETURN_MINUS_ONE(job->job_output_fd, "Failed to open job output file.");
 
   char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
