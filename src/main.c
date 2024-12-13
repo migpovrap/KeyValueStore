@@ -15,6 +15,7 @@
 })
 
 sem_t backup_semaphore;
+_Atomic int child_terminated = 0;
 
 int main(int argc, char *argv[]) {
   if (kvs_init()) {
@@ -46,11 +47,16 @@ int main(int argc, char *argv[]) {
   int max_files = queue->num_files;
   pthread_t threads[max_threads];
 
+  pthread_t semaphore_thread;
+    pthread_create(&semaphore_thread, NULL, semaphore_aux_thread, NULL);
+
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_create(&threads[i], NULL, process_file, (void *)queue);
 
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_join(threads[i], NULL);
+  
+  pthread_join(semaphore_thread, NULL);
 
   while (sem_trywait(&backup_semaphore) != 0) // Waits for all child processes to end.
     sleep(1);

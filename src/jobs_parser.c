@@ -45,7 +45,7 @@ void enqueue_job(JobQueue *queue, Job *job) {
       temp = temp->next;
     temp->next = job;
   }
-  __sync_fetch_and_add(&queue->num_files, 1);
+  queue->num_files++;
   pthread_mutex_unlock(&queue->queue_mutex);
 }
 
@@ -63,7 +63,7 @@ Job* dequeue_job(JobQueue *queue) {
   }
   Job *job = queue->current_job;
   queue->current_job = queue->current_job->next;
-  __sync_fetch_and_sub(&queue->num_files, 1);
+  queue->num_files--;
   return job;
 }
 

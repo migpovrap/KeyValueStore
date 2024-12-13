@@ -261,8 +261,17 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
 }
 
 void semaphore_aux() {
+  extern _Atomic int child_terminated;
+  __sync_fetch_and_add(&child_terminated, 1);
+}
+
+void* semaphore_aux_thread() {
   extern sem_t backup_semaphore;
-  // WNOHANG - Waits for any child process to finish without blocking.
-  while (waitpid(-1, NULL, WNOHANG) > 0)
+  extern _Atomic int child_terminated;
+  while (atomic_load(&child_terminated) != 0) {
     sem_post(&backup_semaphore);
+    __sync_fetch_and_sub(&child_terminated, 1);
+    sleep(1);
+  }
+  return NULL;
 }
