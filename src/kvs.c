@@ -34,6 +34,7 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     if (strcmp(key_node->key, key) == 0) {
       char *temp = strdup(value);
       free(key_node->value);
+      key_node->value = NULL;
       key_node->value = temp;
       return 0;
     }
@@ -80,8 +81,11 @@ int delete_pair(HashTable *ht, const char *key) {
       }
       // Free the memory allocated for the key and value
       free(key_node->key);
+      key_node->key = NULL;
       free(key_node->value);
+      key_node->value = NULL;
       free(key_node); // Free the key node itself
+      key_node = NULL;
       return 0; // Exit the function
     } else {
       prev_node = key_node; // Move prev_node to current node
@@ -100,8 +104,11 @@ void free_table(HashTable *ht) {
       KeyNode *temp = key_node;
       key_node = key_node->next;
       free(temp->key);
+      temp->key = NULL;
       free(temp->value);
+      temp->value = NULL;
       free(temp);
+      temp = NULL;
     }
   }
   for (int i=0; i < TABLE_SIZE; i++) {
@@ -109,4 +116,5 @@ void free_table(HashTable *ht) {
     pthread_rwlock_destroy(&ht->hash_lock[i]);
   }
   free(ht);
+  ht = NULL;
 }

@@ -91,6 +91,7 @@ char *dir_path) {
     job_file_path = realloc(job_file_path, path_len + 1); // +1 for null terminator
     initialize_job(current_job, job_file_path);
     free(job_file_path);
+    job_file_path = NULL;
     enqueue_job(*queue, current_job);
   } else if (current_file->d_type == 4 && strcmp(current_file->d_name, ".") != 0\
   && strcmp(current_file->d_name, "..") != 0) {
@@ -104,6 +105,7 @@ char *dir_path) {
         create_jobs(queue, current_file, nested_path); // Recursive call
     closedir(nested_dir);
     free(nested_path);
+    nested_path = NULL;
   }
 }
 
@@ -227,6 +229,7 @@ void cmd_backup(Job* job, JobQueue* queue) {
 
   job->backup_counter++;
   free(backup_out_file_path);
+  backup_out_file_path = NULL;
 }
 
 /**
@@ -286,6 +289,7 @@ void read_file(Job* job, JobQueue* queue) {
     }
   }
   free(job_out_file_path);
+  job_out_file_path = NULL;
   close(job->job_fd);
   close(job->job_output_fd);
 }
@@ -298,7 +302,9 @@ void read_file(Job* job, JobQueue* queue) {
 void destroy_job(Job *job) {
   if(job != NULL) {
     free(job->job_file_path);
+    job->job_file_path = NULL;
     free(job);
+    job = NULL;
   }
 }
 
@@ -309,6 +315,7 @@ void destroy_jobs_queue(JobQueue *queue) {
   pthread_mutex_unlock(&queue->queue_mutex);
   pthread_mutex_destroy(&queue->queue_mutex);
   free(queue);
+  queue = NULL;
 }
 
 void *process_file(void *arg) {

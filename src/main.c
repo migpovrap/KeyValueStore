@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
     }
 
   free(backup_forks_pids);
+  backup_forks_pids = NULL;
   destroy_jobs_queue(queue);
   pthread_mutex_destroy(&backup_mutex);
   kvs_terminate();

@@ -114,6 +114,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
       "(%s,%s)", keys[i], result);
     }
     free(result);
+    result = NULL;
   }
 
   lock_unlock_hashes(keys, num_pairs, READ_UNLOCK);
@@ -268,7 +269,9 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     free(backup_out_file_path);
+    backup_out_file_path = NULL;
     free(backup_forks_pids);
+    backup_forks_pids = NULL;
     destroy_jobs_queue(queue);
     kvs_terminate();
     _exit(EXIT_SUCCESS);
