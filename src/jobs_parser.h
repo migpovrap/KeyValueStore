@@ -15,7 +15,7 @@
 
 typedef struct Job {
   char *job_file_path;
-  int job_fd;
+  int job_fd; //fd means file descriptor
   int job_output_fd;
   int backup_counter;
   struct Job *next;

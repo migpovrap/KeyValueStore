@@ -55,8 +55,6 @@ void enqueue_job(JobQueue *queue, Job *job) {
  * 
  * @param queue The job queue.
  * @return Job* The job data removed from the queue, or NULL if the queue is empty.
- *
- * @return Job* The job data removed from the queue.
  */
 Job* dequeue_job(JobQueue *queue) {
   if (queue->current_job == NULL) {
@@ -208,11 +206,10 @@ void cmd_wait(Job* job) {
  * @brief Performs a backup of the job file and increments the backup counter.
  *
  * This function creates a backup of the job file specified in the Job structure.
- * The backup file is named by appending the backup counter to the original file name.
- * The backup counter is then incremented.
+ * And increments the backup counter to keep track of the number of backups.
  *
- * @param job A pointer to the Job structure containing the job file path and backup counter.
- * @param queue A pointer to the JobQueue structure used for the backup operation.
+ * @param job A pointer to the Job structure.
+ * @param queue A pointer to the JobQueue structure.
  */
 void cmd_backup(Job* job, JobQueue* queue) {
   char *backup_out_file_path = malloc(PATH_MAX);
@@ -223,9 +220,10 @@ void cmd_backup(Job* job, JobQueue* queue) {
   temp_path[strlen(temp_path) - 4] = '\0';
   size_t path_len = (size_t) snprintf(backup_out_file_path, PATH_MAX,
   "%s-%d.bck", temp_path, job->backup_counter);
-  backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 for null terminator
+  backup_out_file_path = realloc(backup_out_file_path, path_len + 1); // +1 null terminator
 
-  CHECK_RETURN_ONE(kvs_backup(backup_out_file_path, queue), "Failed to perform backup.");
+  CHECK_RETURN_ONE(kvs_backup(backup_out_file_path, queue),
+  "Failed to perform backup.");
 
   job->backup_counter++;
   free(backup_out_file_path);
@@ -251,7 +249,7 @@ void read_file(Job* job, JobQueue* queue) {
   temp_path[strlen(temp_path) - 3] = '\0';
   size_t path_len = (size_t) snprintf(job_out_file_path, PATH_MAX,
   "%sout", temp_path);
-  job_out_file_path = realloc(job_out_file_path, path_len + 1); // +1 for null terminator
+  job_out_file_path = realloc(job_out_file_path, path_len + 1); // +1 null terminator
   job->job_fd = open(job->job_file_path, O_RDONLY);
   CHECK_RETURN_MINUS_ONE(job->job_fd, "Failed to open job file.");
   job->job_output_fd = open(job_out_file_path,

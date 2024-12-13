@@ -241,12 +241,12 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   return 0;
 }
 
-void semaphore_aux() {
+void signal_child_terminated() {
   extern _Atomic int child_terminated;
   __sync_fetch_and_add(&child_terminated, 1);
 }
 
-void* semaphore_aux_thread() {
+void* checks_for_terminated_chlidren() {
   extern sem_t backup_semaphore;
   extern _Atomic int child_terminated;
   while (atomic_load(&child_terminated) != 0) {

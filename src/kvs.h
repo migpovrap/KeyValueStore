@@ -21,7 +21,13 @@ typedef struct HashTable {
   pthread_rwlock_t hash_lock[TABLE_SIZE];
 } HashTable;
 
-//TODO: Add description.  
+/**
+ * Hash function based on key initial.
+ * @param key Lowercase alphabetical string.
+ * @return hash.
+ * @note This is not an ideal hash function,
+ * but is useful for test purposes of the project.
+ */
 int hash(const char *key);
 
 /** 

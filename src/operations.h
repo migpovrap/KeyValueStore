@@ -90,8 +90,8 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue);
  * 
  * Checks for terminated child processes and when it finds one it increments (unlocks) the semaphore.
  */
-void semaphore_aux();
+void signal_child_terminated();
 
-void* semaphore_aux_thread();
+void* checks_for_terminated_chlidren();
 
 #endif  // KVS_OPERATIONS_H

@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
   // Sigaction struct to handle SIGCHLD signals
   struct sigaction signal_action;
-  signal_action.sa_handler = semaphore_aux;
+  signal_action.sa_handler = signal_child_terminated;
   sigemptyset(&signal_action.sa_mask); // Initialize the signal set to empty
   signal_action.sa_flags = SA_RESTART; // Restart interrupted system calls
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   pthread_t threads[max_threads];
 
   pthread_t semaphore_thread;
-  pthread_create(&semaphore_thread, NULL, semaphore_aux_thread, NULL);
+  pthread_create(&semaphore_thread, NULL, checks_for_terminated_chlidren, NULL);
 
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_create(&threads[i], NULL, process_file, (void *)queue);

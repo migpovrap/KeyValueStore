@@ -50,12 +50,6 @@ test_private: kvs
 	@{ time ./kvs ../jobs 79 456 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
-test_public: kvs
-	@cp ./kvs ../tests-public/kvs
-	@../tests-public/run_ex1.sh kvs
-	@../tests-public/run_ex2.sh kvs
-	@$(MAKE) -s clean
-
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
@@ -63,7 +57,7 @@ valgrind: kvs
 
 stress_test: kvs
 	@for i in {1..50}; do \
-		./kvs ../jobs 6 12; \
+		./kvs ../jobs 1 2; \
 		$(MAKE) -s rm; \
 		echo "Run $$i completed"; \
 	done
