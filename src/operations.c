@@ -29,6 +29,7 @@ int kvs_terminate() {
     return 1;
   }
   free_table(hash_table);
+  hash_table = NULL;
   return 0;
 }
 
@@ -273,12 +274,14 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     free(backup_forks_pids);
     backup_forks_pids = NULL;
     destroy_jobs_queue(queue);
+    queue = NULL;
     kvs_terminate();
     _exit(EXIT_SUCCESS);
   }
 
   // This is the parent process
   pthread_mutex_lock(&backup_mutex);
+  printf("Backup process num, %d\n", concurrent_backups);
   backup_forks_pids[concurrent_backups++] = pid;
   pthread_mutex_unlock(&backup_mutex);
   return 0;

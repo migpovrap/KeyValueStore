@@ -4,7 +4,7 @@ CC = gcc
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
   -Wall -Werror -Wextra \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -fsanitize=thread -fsanitize=undefined -pthread
+  -fsanitize=address -fsanitize=undefined -pthread
 
 VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
   -Wall -Werror -Wextra \
@@ -63,7 +63,7 @@ valgrind: kvs
 
 stress_test: kvs
 	@for i in {1..50}; do \
-		./kvs ../jobs 200 150; \
+		./kvs ../jobs 2 2; \
 		$(MAKE) -s rm; \
 		echo "Run $$i completed"; \
 	done

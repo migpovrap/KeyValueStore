@@ -288,10 +288,10 @@ void read_file(Job* job, JobQueue* queue) {
         break;
     }
   }
-  free(job_out_file_path);
-  job_out_file_path = NULL;
   close(job->job_fd);
   close(job->job_output_fd);
+  free(job_out_file_path);
+  job_out_file_path = NULL;
 }
 
 /**
@@ -326,6 +326,7 @@ void *process_file(void *arg) {
     Job *job = dequeue_job(queue);
     read_file(job, queue);
     destroy_job(job);
+    job = NULL;
     pthread_mutex_lock(&queue->queue_mutex);
   }
   pthread_mutex_unlock(&queue->queue_mutex);
