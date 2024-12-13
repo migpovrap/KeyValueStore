@@ -237,6 +237,8 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   extern sem_t backup_semaphore;
   pid_t pid;
 
+  sem_wait(&backup_semaphore);
+
   pid = fork();
   if (pid < 0) return 1; // Fork failed
 
@@ -256,4 +258,11 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     _exit(EXIT_SUCCESS);
   }
   return 0;
+}
+
+void semaphore_aux() {
+  extern sem_t backup_semaphore;
+  // WNOHANG - Waits for any child process to finish without blocking.
+  while (waitpid(-1, NULL, WNOHANG) > 0)
+    sem_post(&backup_semaphore);
 }

@@ -62,8 +62,8 @@ valgrind: kvs
 	@$(MAKE) -s clean
 
 stress_test: kvs
-	@for i in {1..50}; do \
-		./kvs ../jobs 2 2; \
+	@for i in {1..500}; do \
+		./kvs ../jobs 180 512; \
 		$(MAKE) -s rm; \
 		echo "Run $$i completed"; \
 	done

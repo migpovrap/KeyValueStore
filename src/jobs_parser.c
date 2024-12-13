@@ -45,7 +45,7 @@ void enqueue_job(JobQueue *queue, Job *job) {
       temp = temp->next;
     temp->next = job;
   }
-  queue->num_files++;
+  __sync_fetch_and_add(&queue->num_files, 1);
   pthread_mutex_unlock(&queue->queue_mutex);
 }
 
@@ -58,15 +58,12 @@ void enqueue_job(JobQueue *queue, Job *job) {
  * @return Job* The job data removed from the queue.
  */
 Job* dequeue_job(JobQueue *queue) {
-  pthread_mutex_lock(&queue->queue_mutex);
   if (queue->current_job == NULL) {
-    pthread_mutex_unlock(&queue->queue_mutex);
     return NULL;
   }
   Job *job = queue->current_job;
   queue->current_job = queue->current_job->next;
-  queue->num_files--;
-  pthread_mutex_unlock(&queue->queue_mutex);
+  __sync_fetch_and_sub(&queue->num_files, 1);
   return job;
 }
 
@@ -322,8 +319,8 @@ void *process_file(void *arg) {
   JobQueue *queue = (JobQueue *)arg;
   pthread_mutex_lock(&queue->queue_mutex);
   while (queue->num_files > 0) {
-    pthread_mutex_unlock(&queue->queue_mutex);
     Job *job = dequeue_job(queue);
+    pthread_mutex_unlock(&queue->queue_mutex);
     read_file(job, queue);
     destroy_job(job);
     job = NULL;

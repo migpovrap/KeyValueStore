@@ -84,4 +84,11 @@ void kvs_wait(unsigned int delay_ms, int fd);
  */
 int kvs_backup(char* backup_out_file_path, JobQueue* queue);
 
+/**
+ * @brief Auxiliary function to handle semaphore operations.
+ * 
+ * Checks for terminated child processes and when it finds one it increments (unlocks) the semaphore.
+ */
+void semaphore_aux();
+
 #endif  // KVS_OPERATIONS_H
