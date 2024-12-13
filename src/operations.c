@@ -243,16 +243,17 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
 
 void signal_child_terminated() {
   extern _Atomic int child_terminated;
-  __sync_fetch_and_add(&child_terminated, 1);
+  atomic_store(&child_terminated, 1);
 }
 
 void* checks_for_terminated_chlidren() {
   extern sem_t backup_semaphore;
   extern _Atomic int child_terminated;
-  while (atomic_load(&child_terminated) != 0) {
-    sem_post(&backup_semaphore);
-    __sync_fetch_and_sub(&child_terminated, 1);
-    sleep(1);
-  }
+    while (atomic_load(&child_terminated) != -1)
+      if (atomic_load(&child_terminated) == 1) {
+        atomic_store(&child_terminated, 0);
+          while (waitpid(-1, NULL, WNOHANG) > 0)
+            sem_post(&backup_semaphore);
+        }
   return NULL;
 }

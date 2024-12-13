@@ -45,11 +45,11 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_join(threads[i], NULL);
   
+  while (sem_trywait(&backup_semaphore) != 0); // Waits for all child processes to end.
+  
+  atomic_store(&child_terminated, -1);
   pthread_join(semaphore_thread, NULL);
 
-  while (sem_trywait(&backup_semaphore) != 0) // Waits for all child processes to end.
-    sleep(1);
-  
   sem_destroy(&backup_semaphore);
   destroy_jobs_queue(queue);
   queue = NULL;

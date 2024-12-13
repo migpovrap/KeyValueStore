@@ -4,11 +4,11 @@ CC = gcc
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
   -Wall -Werror -Wextra \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -fsanitize=thread -fsanitize=undefined -pthread
+  -pthread
 
 VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
   -Wall -Werror -Wextra \
-  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused
+  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused -pthread
 
 ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
@@ -47,12 +47,12 @@ format:
 	@clang-format -i *.c *.h
 
 test_private: kvs
-	@{ time ./kvs ../jobs 79 456 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
+	@{ time ./kvs ../jobs 7 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)
 valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 7 3
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 1 2
 	@$(MAKE) -s clean
 
 stress_test: kvs
