@@ -245,24 +245,19 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     }
     pthread_mutex_unlock(&backup_mutex);
     pid_t exited_pid = wait(NULL);
-
     pthread_mutex_lock(&backup_mutex);
-    for (int i = 0; i < concurrent_backups; ++i) {
+    for (int i = 0; i < concurrent_backups; ++i)
       if (backup_forks_pids[i] == exited_pid) {
         for (int j = i; j < concurrent_backups - 1; ++j)
           backup_forks_pids[j] = backup_forks_pids[j + 1];
         concurrent_backups--;
         break;
       }
-    }
     pthread_mutex_unlock(&backup_mutex);
   }
 
   pid = fork();
-  
-  if (pid < 0) {
-    return 1; // Fork failed
-  }
+  if (pid < 0) return 1; // Fork failed
 
   if (pid == 0) {
     // This is the child process
@@ -275,7 +270,7 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     free(backup_out_file_path);
     free(backup_forks_pids);
     destroy_jobs_queue(queue);
-    kvs_terminate(STDERR_FILENO);
+    kvs_terminate();
     _exit(EXIT_SUCCESS);
   }
 
