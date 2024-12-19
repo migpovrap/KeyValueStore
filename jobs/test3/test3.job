@@ -1,9 +1,0 @@
-READ [chave2,key2]
-WRITE [(chave2,ines)(key2,test3)]
-BACKUP
-
-WRITE [(key2,miguel)]
-BACKUP
-# This should be invalid
-DELETE[key2]
-SHOW

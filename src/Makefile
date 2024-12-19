@@ -1,64 +1,30 @@
-SHELL := /bin/bash
 CC = gcc
 
-CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
-  -Wall -Werror -Wextra \
-  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -fsanitize=thread -pthread
+CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -I. \
+		 -Wall -Wextra \
+		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
+		 -pthread
+# -fsanitize=address -fsanitize=undefined
 
-VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
-  -Wall -Werror -Wextra \
-  -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused -pthread
 
 ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
 endif
 
-all: kvs
-	@if [ ! -f ../lizard_output.log ]; then \
-		lizard -L 50 -T nloc=50 -a 4 -m *.c | tee ../lizard_output.log; \
-	fi
+all: src/server/kvs src/client/client
 
-kvs: main.c constants.h operations.o parser.o jobs_parser.o kvs.o
-	@$(CC) $(CFLAGS) $(SLEEP) -o kvs main.c operations.o parser.o kvs.o jobs_parser.o -lpthread
+src/server/kvs: src/common/protocol.h src/common/constants.h src/server/main.c src/server/operations.o src/server/kvs.o src/server/io.o src/server/parser.o src/common/io.o
+	$(CC) $(CFLAGS) $(SLEEP) -o $@ $^
+
+src/client/client: src/common/protocol.h src/common/constants.h src/client/main.c src/client/api.o src/client/parser.o src/common/io.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c %.h
-	@$(CC) $(CFLAGS) -c ${@:.o=.c}
-
-run: kvs
-	@./kvs ../jobs 7 3
-
-rm: # Removes job outs and backups.
-	@rm -rf ../jobs/*.out ../jobs/**/*.out
-	@rm -rf ../jobs/*.bck ../jobs/**/*.bck
-	@rm -f ../tests-public/jobs/*.out
-	@rm -f ../tests-public/jobs/*.bck
-	@rm -f ../tests-public/jobs2/*/*.out
-	@rm -f ../tests-public/jobs2/*/*.bck
-	@rm -f ../lizard_output.log
+	$(CC) $(CFLAGS) -c ${@:.o=.c} -o $@
 
 clean:
-	@rm -f ../tests-public/kvs
-	@rm -rf kvs.dSYM
-	@rm -f *.o kvs
+	rm -f src/common/*.o src/client/*.o src/server/*.o src/server/core/*.o src/server/kvs src/client/client src/client/client_write
 
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
-	@clang-format -i *.c *.h
-
-test: kvs
-	@{ time ./kvs ../jobs 1 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
-	@$(MAKE) -s clean
-
-valgrind: CFLAGS=$(VALGRIND_CFLAGS)
-valgrind: kvs
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --trace-children=yes ./kvs ../jobs 4 3
-	@$(MAKE) -s clean
-
-stress_test: kvs
-	@for i in {1..50}; do \
-		./kvs ../jobs 12 24; \
-		$(MAKE) -s rm; \
-		echo "Run $$i completed"; \
-	done
-	@$(MAKE) -s clean
+	clang-format -i src/common/*.c src/common/*.h src/client/*.c src/client/*.h src/server/*.c src/server/*.h

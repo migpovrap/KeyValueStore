@@ -1,9 +1,0 @@
-[(key1,KVSERROR)]
-[(key2,value2)]
-[(nonexistentKey,KVSMISSING)]
-Waiting...
-(chave2, valor-exemplo2)
-(key4, value4)
-(key3, value3)
-(key2, new-value2)
-(umaChave, umValor)
