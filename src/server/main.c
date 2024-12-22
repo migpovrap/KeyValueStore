@@ -260,7 +260,14 @@ void* client_request_listener(void* args) {
 
   char buffer[MAX_STRING_SIZE];
 
+  notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY); // DEBUG LINE REMOVE
+
   while (1) {
+    // DEBUG CODE REMOVE
+    char noti[10] = {"TESTE"};
+    write(notification_fifo_fd, noti, 10);
+    printf("Sending notif.\n");
+    // END REMOVE
     ssize_t bytes_read = read(request_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';

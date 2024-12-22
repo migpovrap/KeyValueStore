@@ -13,7 +13,12 @@
 #include "common/io.h"
 
 void* notification_listener(void* arg) {
-  int notification_fifo_fd = *(int*)arg;
+  char* notif_pipe_path = (char*)arg;
+  int notification_fifo_fd = open(notif_pipe_path, O_RDONLY);
+  if (notification_fifo_fd == -1) {
+    fprintf(stderr, "Failed to open the notification named pipe (FIFO).\n");
+    pthread_exit(NULL);
+  }
   char buffer[MAX_STRING_SIZE];
 
   while (1) {
@@ -61,6 +66,13 @@ int main(int argc, char* argv[]) {
   // Open the connection to the kvs server
   if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2]) != 0) {
     fprintf(stderr, "Failed to connect to the KVS server.\n");
+    return 1;
+  }
+
+  // Create a thread to handle notifications
+  pthread_t notification_thread;
+  if (pthread_create(&notification_thread, NULL, notification_listener, &notif_pipe_path) != 0) {
+    perror("pthread_create");
     return 1;
   }
 
