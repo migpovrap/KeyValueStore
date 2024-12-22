@@ -16,6 +16,7 @@ int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const cha
   char message[MAX_STRING_SIZE];
   snprintf(message, MAX_STRING_SIZE, "%d|%s|%s|%s", OP_CODE_CONNECT, req_pipe_path, resp_pipe_path, notif_pipe_path);
   
+  // Send the subscribe message to the request pipe
   if (write(registry_fifo_fd, message, strlen(message)) == -1) {
     fprintf(stderr, "Failed to write on the registry named pipe (FIFO).\n");
     close(registry_fifo_fd);
@@ -59,8 +60,9 @@ int kvs_disconnect(void) {
   char message[2];
   snprintf(message, sizeof(message), "%d", OP_CODE_DISCONNECT);
 
+  // Send the subscribe message to the request pipe
   if (write(request_fifo_fd, message, sizeof(message)) == -1) {
-    fprintf(stderr, "Failed to write the disconnect request to the request pipe (FIFO).\n");
+    fprintf(stderr, "Failed to write on the registry named pipe (FIFO).\n");
     return 1;
   }
 
@@ -88,13 +90,55 @@ int kvs_disconnect(void) {
 }
 
 int kvs_subscribe(const char* key) {
-  // send subscribe message to request pipe and wait for response in response pipe
+
+  char message[MAX_STRING_SIZE];
+  snprintf(message, MAX_STRING_SIZE, "%d|%s", OP_CODE_SUBSCRIBE, key);
+
+  // Send the subscribe message to the request pipe
+  if (write(request_fifo_fd, message, strlen(message)) == -1) {
+    fprintf(stderr, "Failed to write on the registry named pipe (FIFO).\n");
+    return 1;
+  }
+
+  // Verify server response
+  char server_response[2];
+  if (read(response_fifo_fd, server_response, 2) != 2) {
+    fprintf(stderr, "Failed to read the server response.\n");
+    return 1;
+  }
+
+  if (server_response[1] != 0) {
+    fprintf(stderr, "Sever responded with an error.\n");
+    return 1;
+  }
+  // Print the server response
+  printf("Server returned %d for operation: subscribe.\n", server_response[1]);
   return 0;
 }
 
 int kvs_unsubscribe(const char* key) {
-    // send unsubscribe message to request pipe and wait for response in response pipe
+
+  char message[MAX_STRING_SIZE];
+  snprintf(message, MAX_STRING_SIZE, "%d|%s", OP_CODE_UNSUBSCRIBE, key);
+
+  // Send the unsubscribe message to the request pipe
+  if (write(request_fifo_fd, message, strlen(message)) == -1) {
+    fprintf(stderr, "Failed to write on the registry named pipe (FIFO).\n");
+    return 1;
+  }
+
+  // Verify server response
+  char server_response[2];
+  if (read(response_fifo_fd, server_response, 2) != 2) {
+    fprintf(stderr, "Failed to read the server response.\n");
+    return 1;
+  }
+
+  if (server_response[1] != 0) {
+    fprintf(stderr, "Sever responded with an error.\n");
+    return 1;
+  }
+  // Print the server response
+  printf("Server returned %d for operation: unsubscribe.\n", server_response[1]);
   return 0;
 }
-
-

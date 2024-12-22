@@ -10,6 +10,7 @@
 #include "io.h"
 #include "kvs.h"
 #include "operations.h"
+#include "notifications.h"
 
 static struct HashTable *kvs_table = NULL;
 
@@ -54,6 +55,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       fprintf(stderr, "Failed to write key pair (%s,%s)\n", keys[i], values[i]);
     }
+    notify_subscribers(keys[i], values[i]);
   }
 
   pthread_rwlock_unlock(&kvs_table->tablelock);
@@ -105,6 +107,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
       snprintf(str, MAX_STRING_SIZE, "(%s,KVSMISSING)", keys[i]);
       write_str(fd, str);
     }
+    notify_subscribers(keys[i], "DELETED");
   }
   if (aux) {
     write_str(fd, "]\n");

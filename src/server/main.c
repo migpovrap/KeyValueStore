@@ -9,12 +9,14 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdatomic.h>
 
 #include "constants.h"
 #include "common/protocol.h"
 #include "parser.h"
 #include "operations.h"
 #include "io.h"
+#include "notifications.h"
 #include "pthread.h"
 
 struct SharedData {
@@ -32,11 +34,14 @@ struct ClientFIFOs {
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
 
+ClientSubscriptions all_subscriptions = {PTHREAD_MUTEX_INITIALIZER, NULL};
+
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
 size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;   // Directory containing the jobs files
-char* registry_fifo_path = NULL;    // Registry fifo name
+
+atomic_bool connection_listener_alive = 1;
 
 int filter_job_files(const struct dirent* entry) {
     const char* dot = strrchr(entry->d_name, '.');
@@ -260,35 +265,55 @@ void* client_request_listener(void* args) {
 
   char buffer[MAX_STRING_SIZE];
 
-  notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY); // DEBUG LINE REMOVE
-
   while (1) {
-    // DEBUG CODE REMOVE
-    char noti[10] = {"TESTE"};
-    write(notification_fifo_fd, noti, 10);
-    printf("Sending notif.\n");
-    // END REMOVE
     ssize_t bytes_read = read(request_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
 
       // Parse the client operation code request 
       char* token = strtok(buffer, "|");
+      char* key;
       int op_code_int = atoi(token);
       enum OperationCode op_code = (enum OperationCode)op_code_int;
 
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
-          // Handle the subscribe request
+          key = strtok(NULL, "|");
+          notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
+          if (key != NULL) {
+            add_subscription(key, notification_fifo_fd);
+            response[0] = OP_CODE_SUBSCRIBE;
+            response[1] = 0; // Success
+          } else {
+            response[0] = OP_CODE_SUBSCRIBE;
+            response[1] = 1; // Error
+          }
+          if (write(response_fifo_fd, response, 2) == -1) {
+            fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+          }
           break;
+
         case OP_CODE_UNSUBSCRIBE:
-          // Handle the unsubscribe request
+          key = strtok(NULL, "|");
+          if (key != NULL) {
+            remove_subscription(key);
+            response[0] = OP_CODE_UNSUBSCRIBE;
+            response[1] = 0; // Success
+          } else {
+            response[0] = OP_CODE_UNSUBSCRIBE;
+            response[1] = 1; // Error
+          }
+          if (write(response_fifo_fd, response, 2) == -1) {
+            fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+          }
           break;
+
         case OP_CODE_DISCONNECT:
           // Remove all subscriptions on the hashtable
+          remove_client(notification_fifo_fd);
           // Send result op code to to client
-          char response[2] = {OP_CODE_DISCONNECT, 0}; // 0 indicates success
-          if (write(response_fifo_fd, response, 2) == -1) {
+          char disconnect_response[2] = {OP_CODE_DISCONNECT, 0}; // 0 indicates success
+          if (write(response_fifo_fd, disconnect_response, 2) == -1) {
             fprintf(stderr, "Failed to write to the response fifo of the client.\n");
           }
           // Closes the client fifos (open on the server)
@@ -297,8 +322,16 @@ void* client_request_listener(void* args) {
           close(notification_fifo_fd);
           pthread_exit(NULL);
           break;
+        case OP_CODE_CONNECT:
+          // This case is not sent to request pipe only registry pipe (not read here).
+          break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
+          response[0] = op_code;
+          response[1] = 1; // Error unkown operation code
+          if (write(response_fifo_fd, response, 2) == -1) {
+            fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+          }
           break;
       }
     }
@@ -311,7 +344,8 @@ void* client_request_listener(void* args) {
 void* connection_listener(void* args) {
   char* registry_fifo_path = (char*)args;
   int registry_fifo_fd;
-
+  pthread_t client_thread;
+  
   // Creates a named pipe (FIFO)
   if(mkfifo(registry_fifo_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
     fprintf(stderr, "Failed to create the named pipe or one already exists with the same name.\n");
@@ -323,20 +357,19 @@ void* connection_listener(void* args) {
     fprintf(stderr, "Failed to open the named pipe (FIFO).\n");
     pthread_exit(NULL);
   }
-  pthread_t client_thread;
-  //TODO Needs a loop to wait for a slot to accepts connections and control max number of connections
-  char buffer[MAX_STRING_SIZE];
-  ssize_t bytes_read = read(registry_fifo_fd, buffer, MAX_STRING_SIZE);
-  if (bytes_read > 0) {
-    buffer[bytes_read] = '\0';
 
-    // Parse the client operation code request 
-    char* token = strtok(buffer, "|");
-    int op_code_int = atoi(token);
-    enum OperationCode op_code = (enum OperationCode)op_code_int;
+  while (atomic_load(&connection_listener_alive)) {
+    char buffer[MAX_STRING_SIZE];
+    ssize_t bytes_read = read(registry_fifo_fd, buffer, MAX_STRING_SIZE);
+     if (bytes_read > 0) {
+      buffer[bytes_read] = '\0';
 
-    switch (op_code) {
-      case OP_CODE_CONNECT: {
+      // Parse the client operation code request
+      char* token = strtok(buffer, "|");
+      int op_code_int = atoi(token);
+      enum OperationCode op_code = (enum OperationCode)op_code_int;
+
+      if (op_code == OP_CODE_CONNECT) {
         char* req_pipe_path = strtok(NULL, "|");
         char* resp_pipe_path = strtok(NULL, "|");
         char* notif_pipe_path = strtok(NULL, "|");
@@ -347,20 +380,14 @@ void* connection_listener(void* args) {
         if (pthread_create(&client_thread, NULL, client_request_listener, &client_data) != 0) {
           perror("pthread_create");
         }
-        // For now the it exist in the disconnect command.
-        // TODO: Make a list of clients and the thread that is handeling their request
-        // TODO: Create a new thread that runs a fucntion to handle all client request. (This way it implements the two parts in one go)
-      break;
+        pthread_detach(client_thread); // Detach the thread to handle client requests independently
       }
-
-      default:
-        fprintf(stderr, "Unknown operation code: %s\n", token);
-      break;
     }
   }
   pthread_join(client_thread, NULL);
   close(registry_fifo_fd);
   unlink(registry_fifo_path);
+  clear_all_subscriptions();
   pthread_exit(NULL);
 }
 
@@ -415,7 +442,7 @@ int main(int argc, char** argv) {
   }
 
   jobs_directory = argv[1];
-  registry_fifo_path = argv[4];
+  char* registry_fifo_path = argv[4];   // Registry fifo name
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
@@ -472,6 +499,7 @@ int main(int argc, char** argv) {
     active_backups--;
   }
 
+  atomic_store(&connection_listener_alive, 0);
   pthread_join(registry_listener, NULL);
 
   kvs_terminate();

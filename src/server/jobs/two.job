@@ -1,6 +1,8 @@
 WRITE [(e,edmundo)(f,felix)]
 WRITE [(g,gabriela)(h,helio)]
+WAIT 3000
 BACKUP
+WAIT 3000
 DELETE [g]
 WRITE [(i,ignacio)(j,joana)]
 WRITE [(k,katia)(l,leonel)]
