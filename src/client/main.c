@@ -12,6 +12,20 @@
 #include "common/constants.h"
 #include "common/io.h"
 
+void* notification_listener(void* arg) {
+  int notification_fifo_fd = *(int*)arg;
+  char buffer[MAX_STRING_SIZE];
+
+  while (1) {
+    ssize_t bytes_read = read(notification_fifo_fd, buffer, MAX_STRING_SIZE);
+    if (bytes_read > 0) {
+      buffer[bytes_read] = '\0';
+      printf("Notification: %s\n", buffer);
+    }
+  }
+
+  return NULL;
+}
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
@@ -50,8 +64,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Launch a new thread to listen for notifications
-
   while (1) {
     switch (get_next(STDIN_FILENO)) {
       // Each command needs to print to stdout the response that it got from the server
@@ -60,7 +72,10 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Failed to disconnect to the server\n");
           return 1;
         }
-        // TODO: end notifications thread
+        // Clean the notification thread
+        unlink(req_pipe_path);
+        unlink(resp_pipe_path);
+        unlink(notif_pipe_path);
         printf("Disconnected from server\n");
         return 0;
 
