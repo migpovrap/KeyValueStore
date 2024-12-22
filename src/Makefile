@@ -1,4 +1,4 @@
-CC = gcc
+CC = gcc-14
 
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -I. \
 		 -Wall -Wextra \
@@ -11,20 +11,23 @@ ifneq ($(shell uname -s),Darwin) # if not macOS
 	CFLAGS += -fmax-errors=5
 endif
 
-all: src/server/kvs src/client/client
+all: server/kvs client/client
 
-src/server/kvs: src/common/protocol.h src/common/constants.h src/server/main.c src/server/operations.o src/server/kvs.o src/server/io.o src/server/parser.o src/common/io.o
+server/kvs: common/protocol.h common/constants.h server/main.c server/operations.o server/kvs.o server/io.o server/parser.o common/io.o
 	$(CC) $(CFLAGS) $(SLEEP) -o $@ $^
 
-src/client/client: src/common/protocol.h src/common/constants.h src/client/main.c src/client/api.o src/client/parser.o src/common/io.o
+client/client: common/protocol.h common/constants.h client/main.c client/api.o client/parser.o common/io.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c ${@:.o=.c} -o $@
 
 clean:
-	rm -f src/common/*.o src/client/*.o src/server/*.o src/server/core/*.o src/server/kvs src/client/client src/client/client_write
+	@rm -f common/*.o client/*.o server/*.o server/core/*.o server/kvs client/client client/client_write
+
+rm:
+	@rm -f server/jobs/*.bck server/jobs/*.out ./*.pipe
 
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
-	clang-format -i src/common/*.c src/common/*.h src/client/*.c src/client/*.h src/server/*.c src/server/*.h
+	clang-format -i common/*.c common/*.h client/*.c client/*.h server/*.c server/*.h

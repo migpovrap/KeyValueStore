@@ -5,10 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "constants.h"
+#include "common/protocol.h"
 #include "parser.h"
 #include "operations.h"
 #include "io.h"
@@ -26,7 +29,8 @@ pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
 size_t max_threads;            // Maximum allowed simultaneous threads
-char* jobs_directory = NULL;
+char* jobs_directory = NULL;   // Directory containing the jobs files
+char* registry_fifo = NULL;    // Registry fifo name
 
 int filter_job_files(const struct dirent* entry) {
     const char* dot = strrchr(entry->d_name, '.');
@@ -231,6 +235,78 @@ static void* get_file(void* arguments) {
   pthread_exit(NULL);
 }
 
+void* connection_listener(void* args) {
+  char* registry_fifo = (char*)args;
+  int registry_fifo_fd;
+
+  // Creates a named pipe (FIFO)
+  if(mkfifo(registry_fifo, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
+    fprintf(stderr, "Failed to create the named pipe or one already exists with the same name.\n");
+    pthread_exit(NULL);
+  }
+
+  // Opens the named pipe (FIFO) for reading
+  if ((registry_fifo_fd = open(registry_fifo, O_RDONLY)) == -1) {
+    fprintf(stderr, "Failed to open the named pipe (FIFO).\n");
+    pthread_exit(NULL);
+  }
+
+  char buffer[MAX_STRING_SIZE];
+  ssize_t bytes_read = read(registry_fifo_fd, buffer, MAX_STRING_SIZE);
+  if (bytes_read > 0) {
+    buffer[bytes_read] = '\0';
+
+    // Parse the client connection request
+    char* token = strtok(buffer, "|");
+    int op_code_int = atoi(token);
+    enum OperationCode op_code = (enum OperationCode)op_code_int;
+
+    switch (op_code) {
+      case OP_CODE_CONNECT: {
+        char* req_pipe_path = strtok(NULL, "|");
+        char* resp_pipe_path = strtok(NULL, "|");
+        char* notif_pipe_path = strtok(NULL, "|");
+
+        // Open the client named pipes (FIFOs)
+        int req_fd = open(req_pipe_path, O_RDONLY);
+        int resp_fd = open(resp_pipe_path, O_WRONLY);
+        int notif_fd = open(notif_pipe_path, O_WRONLY);
+
+        if (req_fd == -1 || resp_fd == -1 || notif_fd == -1) {
+          fprintf(stderr, "Failed to open the client fifos.\n");
+          pthread_exit(NULL);
+        } 
+
+        // Send result op code to to client
+        char response[2] = {OP_CODE_CONNECT, 0}; // 0 indicates success
+        if (write(resp_fd, response, 2) == -1) {
+          fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+        }
+        // TODO: Make a list of clients and the thread that is handeling their request
+        // TODO: Create a new thread that runs a fucntion to handle all client request. (This way it implements the two parts in one go)
+      break;
+      }
+
+      default:
+        fprintf(stderr, "Unknown operation code: %s\n", token);
+      break;
+    }
+  }
+
+  close(registry_fifo_fd);
+  pthread_exit(NULL);
+}
+
+void connection_manager(char* registry_fifo) {
+  pthread_t listener;
+
+  if(pthread_create(&listener, NULL, connection_listener, registry_fifo) != 0) {
+    fprintf(stderr, "Failed to create listener thread.\n");
+    return;
+  }
+
+  pthread_join(listener, NULL);
+}
 
 static void dispatch_threads(DIR* dir) {
   pthread_t* threads = malloc(max_threads * sizeof(pthread_t));
@@ -277,11 +353,13 @@ int main(int argc, char** argv) {
     write_str(STDERR_FILENO, argv[0]);
     write_str(STDERR_FILENO, " <jobs_dir>");
 		write_str(STDERR_FILENO, " <max_threads>");
-		write_str(STDERR_FILENO, " <max_backups> \n");
+		write_str(STDERR_FILENO, " <max_backups>");
+    write_str(STDERR_FILENO, " <registry_fifo> \n");
     return 1;
   }
 
   jobs_directory = argv[1];
+  registry_fifo = argv[4];
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
@@ -318,6 +396,8 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Failed to open directory: %s\n", argv[1]);
     return 0;
   }
+  
+  connection_manager(registry_fifo);
 
   dispatch_threads(dir);
 

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "src/common/constants.h"
+#include "common/constants.h"
 
 // Reads a string and indicates the position from where it was
 // extracted, based on the KVS specification.

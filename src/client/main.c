@@ -4,11 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include "parser.h"
-#include "src/client/api.h"
-#include "src/common/constants.h"
-#include "src/common/io.h"
+#include "client/api.h"
+#include "common/constants.h"
+#include "common/io.h"
 
 
 int main(int argc, char* argv[]) {
@@ -29,10 +31,30 @@ int main(int argc, char* argv[]) {
   strncat(resp_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
   strncat(notif_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
 
-  // TODO open pipes
+  // Create the named pipes (FIFOS) of the client for comunication
+  if (mkfifo(req_pipe_path, 0666) == -1 && errno != EEXIST) {
+    perror("mkfifo req_pipe");
+    return 1;
+  }
+  if (mkfifo(resp_pipe_path, 0666) == -1 && errno != EEXIST) {
+    perror("mkfifo resp_pipe");
+    return 1;
+  }
+  if (mkfifo(notif_pipe_path, 0666) == -1 && errno != EEXIST) {
+    perror("mkfifo notif_pipe");
+    return 1;
+  }
+  // Open the connection to the kvs server
+  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2]) != 0) {
+    fprintf(stderr, "Failed to connect to the KVS server.\n");
+    return 1;
+  }
+
+  // Launch a new thread to listen for notifications
 
   while (1) {
     switch (get_next(STDIN_FILENO)) {
+      // Each command needs to print to stdout the response that it got from the server
       case CMD_DISCONNECT:
         if (kvs_disconnect() != 0) {
           fprintf(stderr, "Failed to disconnect to the server\n");

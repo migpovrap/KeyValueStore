@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "src/common/constants.h"
+#include "common/constants.h"
 
 enum Command {
   CMD_DISCONNECT,
