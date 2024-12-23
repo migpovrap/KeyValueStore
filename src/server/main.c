@@ -31,10 +31,18 @@ struct ClientFIFOs {
   char* notif_pipe_path; 
 };
 
+typedef struct ClientThreads {
+  pthread_t thread;
+  struct ClientThreads* next;
+} ClientThreads;
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
 
 ClientSubscriptions all_subscriptions = {PTHREAD_MUTEX_INITIALIZER, NULL};
+
+ClientThreads* client_threads = NULL;
+pthread_mutex_t client_threads_lock = PTHREAD_MUTEX_INITIALIZER;
 
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
@@ -246,6 +254,38 @@ static void* get_file(void* arguments) {
   pthread_exit(NULL);
 }
 
+void add_client_thread(pthread_t new_thread) {
+  ClientThreads* new_client_thread = malloc(sizeof(ClientThreads));
+  if (new_client_thread == NULL) {
+    perror("malloc");
+    return;
+  }
+
+  new_client_thread->thread = new_thread;
+  new_client_thread->next = NULL;
+
+  pthread_mutex_lock(&client_threads_lock);
+  new_client_thread->next = client_threads;
+  client_threads = new_client_thread;
+  pthread_mutex_unlock(&client_threads_lock);
+}
+
+void join_all_client_threads() {
+  pthread_mutex_lock(&client_threads_lock);
+
+  ClientThreads* curr = client_threads;
+  while (curr != NULL) {
+    pthread_join(curr->thread, NULL);
+    ClientThreads* temp = curr;
+    curr = curr->next;
+    free(temp);
+  }
+
+  client_threads = NULL;
+  pthread_mutex_unlock(&client_threads_lock);
+  pthread_mutex_destroy(&client_threads_lock);
+}
+
 void* client_request_listener(void* args) {
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
   int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY);
@@ -344,7 +384,6 @@ void* client_request_listener(void* args) {
 void* connection_listener(void* args) {
   char* registry_fifo_path = (char*)args;
   int registry_fifo_fd;
-  pthread_t client_thread;
   
   // Creates a named pipe (FIFO)
   if(mkfifo(registry_fifo_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
@@ -377,17 +416,18 @@ void* connection_listener(void* args) {
         struct ClientFIFOs client_data = {req_pipe_path, resp_pipe_path, notif_pipe_path};
 
         // Create a thread to handle client requests
+        pthread_t client_thread;
         if (pthread_create(&client_thread, NULL, client_request_listener, &client_data) != 0) {
           perror("pthread_create");
         }
-        pthread_detach(client_thread); // Detach the thread to handle client requests independently
+       add_client_thread(client_thread);
       }
     }
   }
-  pthread_join(client_thread, NULL);
   close(registry_fifo_fd);
   unlink(registry_fifo_path);
   clear_all_subscriptions();
+  join_all_client_threads();
   pthread_exit(NULL);
 }
 
@@ -499,6 +539,11 @@ int main(int argc, char** argv) {
     active_backups--;
   }
 
+
+  // Sleeps for 20 sec, I don't know how the server should end, when it finishes the jobs or does it have a exit command??
+  sleep(20);
+
+  // Signal the connection manager thread to exit
   atomic_store(&connection_listener_alive, 0);
   pthread_join(registry_listener, NULL);
 

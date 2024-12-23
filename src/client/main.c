@@ -63,8 +63,11 @@ int main(int argc, char* argv[]) {
     perror("mkfifo notif_pipe");
     return 1;
   }
+
+  int request_fifo_fd, response_fifo_fd;
+
   // Open the connection to the kvs server
-  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2]) != 0) {
+  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2], &request_fifo_fd, &response_fifo_fd) != 0) {
     fprintf(stderr, "Failed to connect to the KVS server.\n");
     return 1;
   }
@@ -80,11 +83,13 @@ int main(int argc, char* argv[]) {
     switch (get_next(STDIN_FILENO)) {
       // Each command needs to print to stdout the response that it got from the server
       case CMD_DISCONNECT:
-        if (kvs_disconnect() != 0) {
+        if (kvs_disconnect(&request_fifo_fd, &response_fifo_fd) != 0) {
           fprintf(stderr, "Failed to disconnect to the server\n");
           return 1;
         }
         // Clean the notification thread
+        pthread_cancel(notification_thread);
+        pthread_join(notification_thread, NULL);
         unlink(req_pipe_path);
         unlink(resp_pipe_path);
         unlink(notif_pipe_path);
@@ -98,7 +103,7 @@ int main(int argc, char* argv[]) {
           continue;
         }
          
-        if (kvs_subscribe(keys[0])) {
+        if (kvs_subscribe(&request_fifo_fd, &response_fifo_fd, keys[0])) {
             fprintf(stderr, "Command subscribe failed\n");
         }
 
@@ -111,7 +116,7 @@ int main(int argc, char* argv[]) {
           continue;
         }
          
-        if (kvs_unsubscribe(keys[0])) {
+        if (kvs_unsubscribe(&request_fifo_fd, &response_fifo_fd, keys[0])) {
             fprintf(stderr, "Command subscribe failed\n");
         }
 
