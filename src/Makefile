@@ -30,9 +30,9 @@ rm:
 
 test: server/kvs client/client
 	stdbuf -oL ./server/kvs ./server/jobs 4 2 ./teste.pipe | sed "s/^/\x1b[32m[SERVER]\x1b[0m /" &
-	sleep 0.002
+	@sleep 0.002
 	stdbuf -oL ./client/client 1 ./teste.pipe < ./tests/client_tests.txt | sed "s/^/\x1b[34m[CLIENT]\x1b[0m /"
-	wait
+	@sleep 0.002
 	@$(MAKE) -s clean
 
 format:
