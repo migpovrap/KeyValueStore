@@ -7,7 +7,7 @@ int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const cha
   int registry_fifo_fd = open(registry_fifo, O_WRONLY);
 
   if (registry_fifo_fd == -1) {
-    fprintf(stderr, "Failed to open the regestry named pipe (FIFO).\n");
+    fprintf(stderr, "Failed to open the registry named pipe (FIFO).\n");
     return 1;
   }
 
