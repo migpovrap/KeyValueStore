@@ -52,7 +52,7 @@ void* sigusr1_handler_manager() {
   while (1) {
     if (atomic_load(&sigusr1_received)) {
       clear_all_subscriptions();
-      //Close all client threads and their fifos
+      join_all_client_threads();
       atomic_store(&sigusr1_received, 0);
     }
     sleep(1); // Small sleep between checks to avoid busy-waiting

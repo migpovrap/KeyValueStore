@@ -17,13 +17,13 @@
 ClientThreads* client_threads = NULL;
 pthread_mutex_t client_threads_lock = PTHREAD_MUTEX_INITIALIZER;
 
-void add_client_thread(pthread_t new_thread) {
+void add_client_thread(pthread_t new_thread, struct ClientFIFOs* client_data) {
   ClientThreads* new_client_thread = malloc(sizeof(ClientThreads));
   if (new_client_thread == NULL) {
     perror("malloc");
     return;
   }
-
+  atomic_store(&new_client_thread->client_listener_alive, 1);
   new_client_thread->thread = new_thread;
   new_client_thread->next = NULL;
 
@@ -31,12 +31,20 @@ void add_client_thread(pthread_t new_thread) {
   new_client_thread->next = client_threads;
   client_threads = new_client_thread;
   pthread_mutex_unlock(&client_threads_lock);
+
+  client_data->thread_data = new_client_thread;
 }
 
 void join_all_client_threads() {
   pthread_mutex_lock(&client_threads_lock);
 
   ClientThreads* curr = client_threads;
+  while (curr != NULL) {
+    atomic_store(&curr->client_listener_alive, 0); // Set the flag for thread exit
+    curr = curr->next;
+  }
+  
+  curr = client_threads;
   while (curr != NULL) {
     pthread_join(curr->thread, NULL);
     ClientThreads* temp = curr;
@@ -68,7 +76,7 @@ void* client_request_listener(void* args) {
 
   char buffer[MAX_STRING_SIZE];
 
-  while (1) {
+  while (atomic_load(&client_data->thread_data->client_listener_alive)) {
     ssize_t bytes_read = read(request_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
@@ -123,6 +131,7 @@ void* client_request_listener(void* args) {
           close(request_fifo_fd);
           close(response_fifo_fd);
           close(notification_fifo_fd);
+          free(client_data);
           pthread_exit(NULL);
           break;
         case OP_CODE_CONNECT:
@@ -139,8 +148,10 @@ void* client_request_listener(void* args) {
       }
     }
   }
-
   close(request_fifo_fd);
+  close(response_fifo_fd);
+  close(notification_fifo_fd);
+  free(client_data);
   pthread_exit(NULL);
 }
 
@@ -177,14 +188,18 @@ void* connection_listener(void* args) {
         char* resp_pipe_path = strtok(NULL, "|");
         char* notif_pipe_path = strtok(NULL, "|");
 
-        struct ClientFIFOs client_data = {req_pipe_path, resp_pipe_path, notif_pipe_path};
+        struct ClientFIFOs* client_data = malloc(sizeof(struct ClientFIFOs));
+        client_data->req_pipe_path = req_pipe_path;
+        client_data->resp_pipe_path = resp_pipe_path;
+        client_data->notif_pipe_path = notif_pipe_path;
 
         // Create a thread to handle client requests
         pthread_t client_thread;
-        if (pthread_create(&client_thread, NULL, client_request_listener, &client_data) != 0) {
+        if (pthread_create(&client_thread, NULL, client_request_listener, client_data) != 0) {
           perror("pthread_create");
+          free(client_data);
         }
-       add_client_thread(client_thread);
+       add_client_thread(client_thread, client_data);
       }
     }
   }

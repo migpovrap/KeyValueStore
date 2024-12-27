@@ -20,5 +20,6 @@ void remove_subscription(const char* key);
 void remove_client(int notification_fifo_fd);
 void notify_subscribers(const char* key, const char* value);
 void clear_all_subscriptions();
+void join_all_client_threads();
 
 #endif
