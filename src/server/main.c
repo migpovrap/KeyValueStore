@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -33,6 +34,31 @@ size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;   // Directory containing the jobs files
 
 atomic_bool connection_listener_alive = 1;
+
+// Signal handler functions
+_Atomic int sigusr1_received = 0;
+_Atomic int sigint_received = 0;
+
+void handle_sigusr1() {
+  atomic_store(&sigusr1_received, 1);
+}
+
+void handle_sigint() {
+  atomic_store(&sigint_received, 1);
+}
+
+// SIGUSR1 thread handler function
+void* sigusr1_handler_manager() {
+  while (1) {
+    if (atomic_load(&sigusr1_received)) {
+      clear_all_subscriptions();
+      //Close all client threads and their fifos
+      atomic_store(&sigusr1_received, 0);
+    }
+    sleep(1); // Small sleep between checks to avoid busy-waiting
+  }
+  return NULL;
+}
 
 int main(int argc, char** argv) {
   if (argc < 4) {
@@ -84,6 +110,24 @@ int main(int argc, char** argv) {
     return 0;
   }
   
+  // Setup signal handler for SIGUSR1
+  struct sigaction sa_usr1;
+  sa_usr1.sa_handler = handle_sigusr1;
+  sigemptyset(&sa_usr1.sa_mask);
+  sa_usr1.sa_flags = 0;
+  sigaction(SIGUSR1, &sa_usr1, NULL);
+
+  // Setup signal handler for SIGINT
+  struct sigaction sa_int;
+  sa_int.sa_handler = handle_sigint;
+  sigemptyset(&sa_int.sa_mask);
+  sa_int.sa_flags = 0;
+  sigaction(SIGINT, &sa_int, NULL);
+
+  // Create a thread to listen for the SIGUSR1 signal
+  pthread_t sigusr1_manager;
+  pthread_create(&sigusr1_manager, NULL, sigusr1_handler_manager, NULL);
+
   // Create a thread to listen on the registry fifo non blocking.
   pthread_t registry_listener;
   if (pthread_create(&registry_listener, NULL, connection_listener, registry_fifo_path) != 0) {
@@ -103,15 +147,19 @@ int main(int argc, char** argv) {
     active_backups--;
   }
 
-
-  // Sleeps for 20 sec, I don't know how the server should end, when it finishes the jobs or does it have a exit command??
-  sleep(20);
-
+  // Check to see when SIGINT is sent by the terminal (CTRL-C)
+  while (!atomic_load(&sigint_received)) {
+    sleep(1);
+  }
+  
   // Signal the connection manager thread to exit
   atomic_store(&connection_listener_alive, 0);
   pthread_join(registry_listener, NULL);
 
   kvs_terminate();
+
+  pthread_cancel(sigusr1_manager);
+  pthread_join(sigusr1_manager, NULL);
 
   return 0;
 }

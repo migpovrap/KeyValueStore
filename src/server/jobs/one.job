@@ -1,4 +1,4 @@
-WAIT 1000
+WAIT 3000
 WRITE [(d,dinis)(c,carlota)]
 WRITE [(a,anna)(b,bernardo)]
 READ [x,z,l,v]
