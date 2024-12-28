@@ -18,7 +18,7 @@ char req_pipe_path[MAX_PIPE_PATH_LENGTH];
 char resp_pipe_path[MAX_PIPE_PATH_LENGTH];
 char notif_pipe_path[MAX_PIPE_PATH_LENGTH];
 pthread_t notification_thread;
-int request_fifo_fd = -1, response_fifo_fd = -1;
+int request_fifo_fd = -1, response_fifo_fd = -1, notification_fifo_fd = -1;
 
 // Function to clean up FIFOs and close file descriptors
 void cleanup_fifos() {
@@ -41,24 +41,25 @@ void signal_handler(int signo) {
 
 // Notification listener thread function
 void* notification_listener(void* arg) {
-  char* local_notif_pipe_path = (char*) arg;
-  int notification_fifo_fd = open(local_notif_pipe_path, O_RDONLY);
-  if (notification_fifo_fd == -1) {
-    fprintf(stderr, "Failed to open the notification named pipe (FIFO).\n");
-    pthread_exit(NULL);
-  }
-  
+  int notification_fifo_fd = *(int*)arg;
   char buffer[MAX_STRING_SIZE];
   while (1) {
     ssize_t bytes_read = read(notification_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read == -1) {
-      if (errno == EPIPE) {
-        fprintf(stderr, "Notification pipe closed by server.\n");
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        sleep(1);
+        continue;
       } else {
         perror("read");
+        break;
       }
-      break;
     }
+    if (bytes_read == 0) {
+      fprintf(stderr, "Notification pipe closed by server.\n");
+      kill(getpid(), SIGINT);
+      pthread_exit(NULL);
+    }
+
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
       printf("Notification: %s\n", buffer);
@@ -105,13 +106,13 @@ int main(int argc, char* argv[]) {
   }
 
   // Connect to the server
-  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2], &request_fifo_fd, &response_fifo_fd)) {
+  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2], &request_fifo_fd, &response_fifo_fd, &notification_fifo_fd)) {
     fprintf(stderr, "Failed to connect to the KVS server.\n");
     return 1;
   }
 
   // Create a thread for notifications
-  if (pthread_create(&notification_thread, NULL, notification_listener, notif_pipe_path) != 0) {
+  if (pthread_create(&notification_thread, NULL, notification_listener, &notification_fifo_fd) != 0) {
     perror("pthread_create");
     return 1;
   }

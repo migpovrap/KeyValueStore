@@ -28,7 +28,7 @@ static int send_subscribe_unsubscribe_message(int request_fifo_fd, enum Operatio
   return 0;
 }
 
-int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path, const char* registry_fifo, int* request_fifo_fd, int* response_fifo_fd) {
+int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path, const char* registry_fifo, int* request_fifo_fd, int* response_fifo_fd, int* notification_fifo_fd) {
   int registry_fifo_fd = open(registry_fifo, O_WRONLY);
 
   if (registry_fifo_fd == -1) {
@@ -52,11 +52,13 @@ int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const cha
   // Opens the named pipes (FIFOS) with the correct permissions
   *request_fifo_fd = open(req_pipe_path, O_WRONLY);
   *response_fifo_fd = open(resp_pipe_path, O_RDONLY);
+  *notification_fifo_fd = open(notif_pipe_path, O_RDONLY | O_NONBLOCK);
 
-  if (*request_fifo_fd == -1 || *response_fifo_fd == -1) {
+  if (*request_fifo_fd == -1 || *response_fifo_fd == -1 || *notification_fifo_fd == -1) {
     fprintf(stderr, "Failed to open the named pipes (FIFOs).\n");
     if (*request_fifo_fd != -1) close(*request_fifo_fd);
     if (*response_fifo_fd != -1) close(*response_fifo_fd);
+    if (*notification_fifo_fd != -1) close(*notification_fifo_fd);
     return 1;
   }
 
@@ -65,6 +67,7 @@ int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const cha
   if (check_server_response(*response_fifo_fd, &response_code)) {
     close(*request_fifo_fd);
     close(*response_fifo_fd);
+    close(*notification_fifo_fd);
     return 1;
   }
   

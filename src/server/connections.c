@@ -64,7 +64,7 @@ void* client_request_listener(void* args) {
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
   int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY |O_NONBLOCK);
   int response_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
-  int notification_fifo_fd;
+  int notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
 
   if (request_fifo_fd == -1 || response_fifo_fd == -1) {
     fprintf(stderr, "Failed to open the client fifos.\n");
@@ -93,7 +93,6 @@ void* client_request_listener(void* args) {
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
-          notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
           if (key != NULL) {
             add_subscription(key, notification_fifo_fd);
             response[0] = OP_CODE_SUBSCRIBE;
@@ -152,7 +151,6 @@ void* client_request_listener(void* args) {
       }
     }
   }
-  printf("Thread killed by server.\n");
   close(request_fifo_fd);
   close(response_fifo_fd);
   close(notification_fifo_fd);
