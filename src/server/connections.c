@@ -63,7 +63,7 @@ void* client_request_listener(void* args) {
   extern sem_t max_clients;
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
 
-  int req_fifo_fd = open(client_data->req_pipe_path, O_RDONLY);
+  int req_fifo_fd = open(client_data->req_pipe_path, O_RDONLY | O_NONBLOCK);
   int resp_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
   int notif_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
 

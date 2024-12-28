@@ -3,7 +3,7 @@ CC = gcc-14
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -I. \
 		 -Wall -Wextra \
 		 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-		 -pthread -fsanitize=thread -fsanitize=undefined
+		 -pthread
 
 
 ifneq ($(shell uname -s),Darwin) # if not macOS

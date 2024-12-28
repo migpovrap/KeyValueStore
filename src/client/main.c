@@ -18,7 +18,7 @@ char req_pipe_path[MAX_PIPE_PATH_LENGTH];
 char resp_pipe_path[MAX_PIPE_PATH_LENGTH];
 char notif_pipe_path[MAX_PIPE_PATH_LENGTH];
 int req_fifo_fd = -1, resp_fifo_fd = -1, notif_fifo_fd = -1;
-pthread_t notification_thread;
+pthread_t notif_thread;
 
 // Function unlink FIFOs and close file descriptors
 void cleanup_fifos() {
@@ -33,8 +33,8 @@ void cleanup_fifos() {
 // Signal handler for SIGINT and SIGTERM
 void signal_handler() {
   cleanup_fifos();
-  pthread_cancel(notification_thread);
-  pthread_join(notification_thread, NULL);
+  pthread_cancel(notif_thread);
+  pthread_join(notif_thread, NULL);
   exit(0);
 }
 
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Create a thread for notifications
-  if (pthread_create(&notification_thread, NULL, notification_listener, NULL) != 0) {
+  if (pthread_create(&notif_thread, NULL, notification_listener, NULL) != 0) {
     perror("pthread_create");
     return 1;
   }
@@ -126,8 +126,8 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Failed to disconnect from the server\n");
           return 1;
         }
-        pthread_cancel(notification_thread);
-        pthread_join(notification_thread, NULL);
+        pthread_cancel(notif_thread);
+        pthread_join(notif_thread, NULL);
         printf("Disconnected from server\n");
         return 0;
 
