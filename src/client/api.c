@@ -2,12 +2,14 @@
 #include "common/constants.h"
 #include "common/protocol.h"
 
-static int check_server_response(int response_fifo_fd) {
+static int check_server_response(int response_fifo_fd, int* response_code) {
   char server_response[SERVER_RESPONSE_SIZE];
   if (read(response_fifo_fd, server_response, SERVER_RESPONSE_SIZE) != SERVER_RESPONSE_SIZE) {
     fprintf(stderr, "Failed to read the server response.\n");
     return 1;
-  } else if (server_response[1] != 0) {
+  }
+  *response_code = server_response[1];
+  if (*response_code != 0) {
     fprintf(stderr, "Server responded with an error.\n");
     return 1;
   }
@@ -53,18 +55,21 @@ int kvs_connect(const char* req_pipe_path, const char* resp_pipe_path, const cha
 
   if (*request_fifo_fd == -1 || *response_fifo_fd == -1) {
     fprintf(stderr, "Failed to open the named pipes (FIFOs).\n");
+    if (*request_fifo_fd != -1) close(*request_fifo_fd);
+    if (*response_fifo_fd != -1) close(*response_fifo_fd);
     return 1;
   }
 
+  int response_code;
   // Verify connection was successful
-  if (check_server_response(*response_fifo_fd)) {
+  if (check_server_response(*response_fifo_fd, &response_code)) {
     close(*request_fifo_fd);
     close(*response_fifo_fd);
     return 1;
   }
   
   // Print the server response
-  printf("Server returned %d for operation: connect.\n", 0); // DELETE
+  printf("Server returned %d for operation: connect.\n", response_code);
   return 0;
 }
  
@@ -79,16 +84,17 @@ int kvs_disconnect(int* request_fifo_fd, int* response_fifo_fd) {
     fprintf(stderr, "Failed to write on the registry named pipe (FIFO).\n");
     status = 1;
   } else {
+    int response_code;
     // If the disconnect message to the request pipe is sent successfully verify server response.
-    status = check_server_response(*response_fifo_fd);  
+    status = check_server_response(*response_fifo_fd, &response_code);  
+    // Print the server response
+    printf("Server returned %d for operation: disconnect.\n", response_code);
   }
   
   // Close the named pipes
   close(*request_fifo_fd);
   close(*response_fifo_fd);
 
-  // Print the server response
-  printf("Server returned %d for operation: disconnect.\n", 0); // DELETE
   return status;
 }
 
@@ -98,13 +104,14 @@ int kvs_subscribe(int* request_fifo_fd, int* response_fifo_fd, const char* key) 
     return 1;
   }
 
+  int response_code;
   // Verify server response
-  if (check_server_response(*response_fifo_fd)) {
+  if (check_server_response(*response_fifo_fd, &response_code)) {
     return 1;
   }
 
   // Print the server response
-  printf("Server returned %d for operation: subscribe.\n", 0); // DELETE
+  printf("Server returned %d for operation: subscribe.\n", response_code);
   return 0;
 }
 
@@ -114,12 +121,13 @@ int kvs_unsubscribe(int* request_fifo_fd, int* response_fifo_fd, const char* key
     return 1;
   }
   
+  int response_code;
   // Verify server response
-  if (check_server_response(*response_fifo_fd)) {
+  if (check_server_response(*response_fifo_fd, &response_code)) {
     return 1;
   }
 
   // Print the server response
-  printf("Server returned %d for operation: unsubscribe.\n", 0); // DELETE
+  printf("Server returned %d for operation: unsubscribe.\n", response_code);
   return 0;
 }
