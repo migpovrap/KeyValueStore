@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdatomic.h>
+#include <semaphore.h>
 
 #include "constants.h"
 #include "common/protocol.h"
@@ -34,6 +35,8 @@ size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;   // Directory containing the jobs files
 
 atomic_bool connection_listener_alive = 1;
+
+sem_t max_clients; // Maximun allowed simultaneous connected clients
 
 // Signal handler functions
 _Atomic int sigusr1_received = 0;
@@ -110,6 +113,9 @@ int main(int argc, char** argv) {
     return 0;
   }
   
+  // Initialize the semaphore with the maximum number of clients the server can support
+  sem_init(&max_clients, 0, MAX_SESSION_COUNT);
+
   // Setup signal handler for SIGUSR1
   struct sigaction sa_usr1;
   sa_usr1.sa_handler = handle_sigusr1;
@@ -160,6 +166,8 @@ int main(int argc, char** argv) {
 
   pthread_cancel(sigusr1_manager);
   pthread_join(sigusr1_manager, NULL);
+
+  sem_destroy(&max_clients);
 
   return 0;
 }

@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <semaphore.h>
 
 #include "connections.h"
 #include "notifications.h"
@@ -58,6 +59,7 @@ void join_all_client_threads() {
 }
 
 void* client_request_listener(void* args) {
+  extern sem_t max_clients;
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
   int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY);
   int response_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
@@ -132,6 +134,7 @@ void* client_request_listener(void* args) {
           close(response_fifo_fd);
           close(notification_fifo_fd);
           free(client_data);
+          sem_post(&max_clients);
           pthread_exit(NULL);
           break;
         case OP_CODE_CONNECT:
@@ -152,11 +155,13 @@ void* client_request_listener(void* args) {
   close(response_fifo_fd);
   close(notification_fifo_fd);
   free(client_data);
+  sem_post(&max_clients);
   pthread_exit(NULL);
 }
 
 void* connection_listener(void* args) {
   extern atomic_bool connection_listener_alive;
+  extern sem_t max_clients;
   char* registry_fifo_path = (char*)args;
   int registry_fifo_fd;
   
@@ -193,11 +198,15 @@ void* connection_listener(void* args) {
         client_data->resp_pipe_path = resp_pipe_path;
         client_data->notif_pipe_path = notif_pipe_path;
 
+        // Wait on the semaphore if there is no space left
+        sem_wait(&max_clients);
+
         // Create a thread to handle client requests
         pthread_t client_thread;
         if (pthread_create(&client_thread, NULL, client_request_listener, client_data) != 0) {
           perror("pthread_create");
           free(client_data);
+          sem_post(&max_clients);
         }
        add_client_thread(client_thread, client_data);
       }
