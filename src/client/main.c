@@ -1,38 +1,37 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <errno.h>
 #include <sys/stat.h>
-#include <signal.h>
+#include <unistd.h>
 
-#include "parser.h"
 #include "client/api.h"
 #include "common/constants.h"
 #include "common/io.h"
+#include "parser.h"
 
-// Global variables for FIFO paths and thread management
+// Global variables for FIFO paths file descriptors and notification thread
 char req_pipe_path[MAX_PIPE_PATH_LENGTH];
 char resp_pipe_path[MAX_PIPE_PATH_LENGTH];
 char notif_pipe_path[MAX_PIPE_PATH_LENGTH];
+int req_fifo_fd = -1, resp_fifo_fd = -1, notif_fifo_fd = -1;
 pthread_t notification_thread;
-int request_fifo_fd = -1, response_fifo_fd = -1, notification_fifo_fd = -1;
 
-// Function to clean up FIFOs and close file descriptors
+// Function unlink FIFOs and close file descriptors
 void cleanup_fifos() {
-  if (request_fifo_fd != -1) close(request_fifo_fd);
-  if (response_fifo_fd != -1) close(response_fifo_fd);
+  if (req_fifo_fd != -1) close(req_fifo_fd);
+  if (resp_fifo_fd != -1) close(resp_fifo_fd);
+  if (notif_fifo_fd != -1) close (notif_fifo_fd);
   unlink(req_pipe_path);
   unlink(resp_pipe_path);
   unlink(notif_pipe_path);
-  printf("Cleaned up FIFOs.\n");
 }
 
 // Signal handler for SIGINT and SIGTERM
-void signal_handler(int signo) {
-  fprintf(stderr, "Received signal %d. Exiting...\n", signo);
+void signal_handler() {
   cleanup_fifos();
   pthread_cancel(notification_thread);
   pthread_join(notification_thread, NULL);
@@ -40,11 +39,10 @@ void signal_handler(int signo) {
 }
 
 // Notification listener thread function
-void* notification_listener(void* arg) {
-  int notification_fifo_fd = *(int*)arg;
+void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
   while (1) {
-    ssize_t bytes_read = read(notification_fifo_fd, buffer, MAX_STRING_SIZE);
+    ssize_t bytes_read = read(notif_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
@@ -66,7 +64,7 @@ void* notification_listener(void* arg) {
     }
   }
 
-  close(notification_fifo_fd);
+  close(notif_fifo_fd);
   return NULL;
 }
 
@@ -106,13 +104,13 @@ int main(int argc, char* argv[]) {
   }
 
   // Connect to the server
-  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2], &request_fifo_fd, &response_fifo_fd, &notification_fifo_fd)) {
+  if (kvs_connect(req_pipe_path, resp_pipe_path, notif_pipe_path, argv[2], &req_fifo_fd, &resp_fifo_fd, &notif_fifo_fd)) {
     fprintf(stderr, "Failed to connect to the KVS server.\n");
     return 1;
   }
 
   // Create a thread for notifications
-  if (pthread_create(&notification_thread, NULL, notification_listener, &notification_fifo_fd) != 0) {
+  if (pthread_create(&notification_thread, NULL, notification_listener, NULL) != 0) {
     perror("pthread_create");
     return 1;
   }
@@ -124,7 +122,7 @@ int main(int argc, char* argv[]) {
 
     switch (get_next(STDIN_FILENO)) {
       case CMD_DISCONNECT:
-        if (kvs_disconnect(&request_fifo_fd, &response_fifo_fd) != 0) {
+        if (kvs_disconnect(&req_fifo_fd, &resp_fifo_fd) != 0) {
           fprintf(stderr, "Failed to disconnect from the server\n");
           return 1;
         }
@@ -139,7 +137,7 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
-        if (kvs_subscribe(&request_fifo_fd, &response_fifo_fd, keys[0])) {
+        if (kvs_subscribe(&req_fifo_fd, &resp_fifo_fd, keys[0])) {
           fprintf(stderr, "Command subscribe failed\n");
         }
         break;
@@ -150,7 +148,7 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
-        if (kvs_unsubscribe(&request_fifo_fd, &response_fifo_fd, keys[0])) {
+        if (kvs_unsubscribe(&req_fifo_fd, &resp_fifo_fd, keys[0])) {
           fprintf(stderr, "Command unsubscribe failed\n");
         }
         break;

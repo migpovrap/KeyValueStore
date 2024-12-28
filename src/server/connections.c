@@ -62,25 +62,26 @@ void join_all_client_threads() {
 void* client_request_listener(void* args) {
   extern sem_t max_clients;
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
-  int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY |O_NONBLOCK);
-  int response_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
-  int notification_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
 
-  if (request_fifo_fd == -1 || response_fifo_fd == -1) {
+  int req_fifo_fd = open(client_data->req_pipe_path, O_RDONLY);
+  int resp_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
+  int notif_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
+
+  if (req_fifo_fd == -1 || resp_fifo_fd == -1) {
     fprintf(stderr, "Failed to open the client fifos.\n");
     pthread_exit(NULL);
   } 
 
   // Send result op code to to client
   char response[2] = {OP_CODE_CONNECT, 0}; // 0 indicates success
-  if (write(response_fifo_fd, response, 2) == -1) {
+  if (write(resp_fifo_fd, response, 2) == -1) {
     fprintf(stderr, "Failed to write to the response fifo of the client.\n");
   }
 
   char buffer[MAX_STRING_SIZE];
 
   while (atomic_load(&client_data->thread_data->client_listener_alive)) {
-    ssize_t bytes_read = read(request_fifo_fd, buffer, MAX_STRING_SIZE);
+    ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
 
@@ -94,14 +95,14 @@ void* client_request_listener(void* args) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
           if (key != NULL) {
-            add_subscription(key, notification_fifo_fd);
+            add_subscription(key, notif_fifo_fd);
             response[0] = OP_CODE_SUBSCRIBE;
             response[1] = 0; // Success
           } else {
             response[0] = OP_CODE_SUBSCRIBE;
             response[1] = 1; // Error
           }
-          if (write(response_fifo_fd, response, 2) == -1) {
+          if (write(resp_fifo_fd, response, 2) == -1) {
             fprintf(stderr, "Failed to write to the response fifo of the client.\n");
           }
           break;
@@ -116,23 +117,23 @@ void* client_request_listener(void* args) {
             response[0] = OP_CODE_UNSUBSCRIBE;
             response[1] = 1; // Error
           }
-          if (write(response_fifo_fd, response, 2) == -1) {
+          if (write(resp_fifo_fd, response, 2) == -1) {
             fprintf(stderr, "Failed to write to the response fifo of the client.\n");
           }
           break;
 
         case OP_CODE_DISCONNECT:
           // Remove all subscriptions on the hashtable
-          remove_client(notification_fifo_fd);
+          remove_client(notif_fifo_fd);
           // Send result op code to to client
           char disconnect_response[2] = {OP_CODE_DISCONNECT, 0}; // 0 indicates success
-          if (write(response_fifo_fd, disconnect_response, 2) == -1) {
+          if (write(resp_fifo_fd, disconnect_response, 2) == -1) {
             fprintf(stderr, "Failed to write to the response fifo of the client.\n");
           }
           // Closes the client fifos (open on the server)
-          close(request_fifo_fd);
-          close(response_fifo_fd);
-          close(notification_fifo_fd);
+          close(req_fifo_fd);
+          close(resp_fifo_fd);
+          close(notif_fifo_fd);
           free(client_data);
           sem_post(&max_clients);
           pthread_exit(NULL);
@@ -144,16 +145,16 @@ void* client_request_listener(void* args) {
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
           response[0] = op_code;
           response[1] = 1; // Error unkown operation code
-          if (write(response_fifo_fd, response, 2) == -1) {
+          if (write(resp_fifo_fd, response, 2) == -1) {
             fprintf(stderr, "Failed to write to the response fifo of the client.\n");
           }
           break;
       }
     }
   }
-  close(request_fifo_fd);
-  close(response_fifo_fd);
-  close(notification_fifo_fd);
+  close(req_fifo_fd);
+  close(resp_fifo_fd);
+  close(notif_fifo_fd);
   free(client_data);
   sem_post(&max_clients);
   pthread_exit(NULL);
