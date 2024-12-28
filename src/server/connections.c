@@ -24,6 +24,7 @@ void add_client_thread(pthread_t new_thread, struct ClientFIFOs* client_data) {
     perror("malloc");
     return;
   }
+  
   atomic_store(&new_client_thread->client_listener_alive, 1);
   new_client_thread->thread = new_thread;
   new_client_thread->next = NULL;
@@ -61,7 +62,7 @@ void join_all_client_threads() {
 void* client_request_listener(void* args) {
   extern sem_t max_clients;
   struct ClientFIFOs* client_data = (struct ClientFIFOs*)args;
-  int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY);
+  int request_fifo_fd = open(client_data->req_pipe_path, O_RDONLY |O_NONBLOCK);
   int response_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
   int notification_fifo_fd;
 
@@ -151,6 +152,7 @@ void* client_request_listener(void* args) {
       }
     }
   }
+  printf("Thread killed by server.\n");
   close(request_fifo_fd);
   close(response_fifo_fd);
   close(notification_fifo_fd);

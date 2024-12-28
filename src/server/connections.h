@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "common/constants.h"
 #include <semaphore.h>
+#include <stdatomic.h>
 
 typedef struct Buffer {
   struct ClientFIFOs* consumer_producer_buffer[MAX_SESSION_COUNT];
@@ -16,7 +17,7 @@ typedef struct Buffer {
 
 typedef struct ClientThreads {
   pthread_t thread;
-  _Atomic int client_listener_alive;
+  atomic_bool client_listener_alive;
   struct ClientThreads* next;
 } ClientThreads;
 
