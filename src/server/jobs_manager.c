@@ -19,11 +19,11 @@
 #include <stdatomic.h>
 
 int filter_job_files(const struct dirent* entry) {
-    const char* dot = strrchr(entry->d_name, '.');
-    if (dot != NULL && strcmp(dot, ".job") == 0) {
-        return 1;  // Keep this file (it has the .job extension)
-    }
-    return 0;
+  const char* dot = strrchr(entry->d_name, '.');
+  if (dot != NULL && strcmp(dot, ".job") == 0) {
+    return 1;  // Keep this file (it has the .job extension)
+  }
+  return 0;
 }
 
 static int entry_files(const char* dir, struct dirent* entry, char* in_path, char* out_path) {

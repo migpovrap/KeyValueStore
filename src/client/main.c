@@ -15,7 +15,6 @@
 #include "utils.c"
 
 ClientData* client_data;
-pthread_mutex_t client_mutex;
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
@@ -30,7 +29,6 @@ int main(int argc, char* argv[]) {
   }
 
   initialize_client_data(argv[1]);
-  pthread_mutex_init(&client_mutex, NULL);
 
   setup_signal_handling();
 

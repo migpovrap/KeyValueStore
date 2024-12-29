@@ -33,10 +33,9 @@ size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
 size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;   // Directory containing the jobs files
+pthread_t* worker_threads;
 
 atomic_bool connection_listener_alive = 1;
-
-sem_t max_clients; // Maximun allowed simultaneous connected clients
 
 // Signal handler functions
 _Atomic int sigusr1_received = 0;
@@ -55,7 +54,7 @@ void* sigusr1_handler_manager() {
   while (1) {
     if (atomic_load(&sigusr1_received)) {
       clear_all_subscriptions();
-      join_all_client_threads();
+      disconnect_all_clients();
       atomic_store(&sigusr1_received, 0);
     }
     sleep(1); // Small sleep between checks to avoid busy-waiting
@@ -113,8 +112,21 @@ int main(int argc, char** argv) {
     return 0;
   }
   
-  // Initialize the semaphore with the maximum number of clients the server can support
-  sem_init(&max_clients, 0, MAX_SESSION_COUNT);
+  init_session_buffer();
+  // Allocate memory for the worker threads array
+  worker_threads = malloc(max_threads * sizeof(pthread_t));
+  if (worker_threads == NULL) {
+    fprintf(stderr, "Failed to allocate memory for worker threads\n");
+    return 1;
+  }
+
+  // Create a pool of worker threads
+  for (size_t i = 0; i < max_threads; i++) {
+    if (pthread_create(&worker_threads[i], NULL, client_request_handler, NULL) != 0) {
+      fprintf(stderr, "Failed to create worker thread\n");
+      return 1;
+    }
+  }
 
   // Setup signal handler for SIGUSR1
   struct sigaction sa_usr1;
@@ -162,12 +174,19 @@ int main(int argc, char** argv) {
   atomic_store(&connection_listener_alive, 0);
   pthread_join(server_listener, NULL);
 
+  // Join worker threads
+  for (size_t i = 0; i < max_threads; i++) {
+    pthread_cancel(worker_threads[i]);
+    pthread_join(worker_threads[i], NULL);
+  }
+
+  // Free the worker threads array
+  free(worker_threads);
+
   kvs_terminate();
 
   pthread_cancel(sigusr1_manager);
   pthread_join(sigusr1_manager, NULL);
-
-  sem_destroy(&max_clients);
 
   return 0;
 }

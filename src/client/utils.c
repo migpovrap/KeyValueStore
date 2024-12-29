@@ -3,7 +3,6 @@
 #include "api.h"
 
 extern ClientData* client_data;
-extern pthread_mutex_t client_mutex;
 
 void initialize_client_data(char* client_id) {
   client_data->req_fifo_fd = -1;
@@ -19,7 +18,6 @@ void initialize_client_data(char* client_id) {
 
 // Function to unlink FIFOs and close file descriptors
 void cleanup_fifos() {
-  pthread_mutex_lock(&client_mutex);
   if (client_data) {
     if (client_data->req_fifo_fd != -1) close(client_data->req_fifo_fd);
     if (client_data->resp_fifo_fd != -1) close(client_data->resp_fifo_fd);
@@ -32,19 +30,15 @@ void cleanup_fifos() {
     free(client_data);
     client_data = NULL;
   }
-  pthread_mutex_unlock(&client_mutex);
-  pthread_mutex_destroy(&client_mutex);
 }
 
 // Signal handler for SIGINT and SIGTERM
 void signal_handler() {
-  pthread_mutex_lock(&client_mutex);
   if (client_data) {
     client_data->terminate = 1;
     pthread_cancel(client_data->notif_thread);
     pthread_join(client_data->notif_thread, NULL);
   }
-  pthread_mutex_unlock(&client_mutex);
   cleanup_fifos();
   _exit(0);
 }
@@ -78,7 +72,7 @@ int create_fifos() {
 void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
   while (1) {
-    int bytes_read =  read_string(client_data->notif_fifo_fd, buffer);
+    int bytes_read = read_string(client_data->notif_fifo_fd, buffer);
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
