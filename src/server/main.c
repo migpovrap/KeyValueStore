@@ -70,12 +70,12 @@ int main(int argc, char** argv) {
     write_str(STDERR_FILENO, " <jobs_dir>");
 		write_str(STDERR_FILENO, " <max_threads>");
 		write_str(STDERR_FILENO, " <max_backups>");
-    write_str(STDERR_FILENO, " <registry_fifo_path> \n");
+    write_str(STDERR_FILENO, " <server_fifo_path> \n");
     return 1;
   }
 
   jobs_directory = argv[1];
-  char* registry_fifo_path = argv[4];   // Registry fifo name
+  char* server_fifo_path = argv[4];   // Server fifo name
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
@@ -134,9 +134,9 @@ int main(int argc, char** argv) {
   pthread_t sigusr1_manager;
   pthread_create(&sigusr1_manager, NULL, sigusr1_handler_manager, NULL);
 
-  // Create a thread to listen on the registry fifo non blocking.
-  pthread_t registry_listener;
-  if (pthread_create(&registry_listener, NULL, connection_listener, registry_fifo_path) != 0) {
+  // Create a thread to listen on the server fifo non blocking.
+  pthread_t server_listener;
+  if (pthread_create(&server_listener, NULL, connection_listener, server_fifo_path) != 0) {
     fprintf(stderr, "Failed to create connection manager thread\n");
     return 1;
   }
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
   
   // Signal the connection manager thread to exit
   atomic_store(&connection_listener_alive, 0);
-  pthread_join(registry_listener, NULL);
+  pthread_join(server_listener, NULL);
 
   kvs_terminate();
 

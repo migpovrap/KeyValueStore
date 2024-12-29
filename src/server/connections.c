@@ -131,7 +131,7 @@ void* client_request_listener(void* args) {
           pthread_exit(NULL);
           break;
         case OP_CODE_CONNECT:
-          // This case is not sent to request pipe only registry pipe (not read here).
+          // This case is not sent to request pipe only server pipe (not read here).
           break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
@@ -154,24 +154,24 @@ void* client_request_listener(void* args) {
 void* connection_listener(void* args) {
   extern atomic_bool connection_listener_alive;
   extern sem_t max_clients;
-  char* registry_fifo_path = (char*)args;
-  int registry_fifo_fd;
+  char* server_pipe_path = (char*)args;
+  int server_fifo_fd;
   
   // Creates a named pipe (FIFO)
-  if(mkfifo(registry_fifo_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
+  if(mkfifo(server_pipe_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
     fprintf(stderr, "Failed to create the named pipe or one already exists with the same name.\n");
     pthread_exit(NULL);
   }
 
   // Opens the named pipe (FIFO) for reading
-  if ((registry_fifo_fd = open(registry_fifo_path, O_RDONLY)) == -1) {
+  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY)) == -1) {
     fprintf(stderr, "Failed to open the named pipe (FIFO).\n");
     pthread_exit(NULL);
   }
 
   while (atomic_load(&connection_listener_alive)) {
     char buffer[MAX_STRING_SIZE];
-    ssize_t bytes_read = read(registry_fifo_fd, buffer, MAX_STRING_SIZE);
+    ssize_t bytes_read = read(server_fifo_fd, buffer, MAX_STRING_SIZE);
      if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
 
@@ -204,8 +204,8 @@ void* connection_listener(void* args) {
       }
     }
   }
-  close(registry_fifo_fd);
-  unlink(registry_fifo_path);
+  close(server_fifo_fd);
+  unlink(server_pipe_path);
   clear_all_subscriptions();
   join_all_client_threads();
   free(listener_threads);
