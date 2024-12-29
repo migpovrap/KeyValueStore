@@ -42,13 +42,13 @@ void signal_handler() {
 void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
   while (1) {
-    ssize_t bytes_read = read(notif_fifo_fd, buffer, MAX_STRING_SIZE);
+    int bytes_read =  read_string(notif_fifo_fd, buffer);
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
         continue;
       } else {
-        perror("read");
+        perror("read_all");
         break;
       }
     }

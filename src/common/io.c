@@ -39,9 +39,20 @@ int read_all(int fd, void *buffer, size_t size, int *intr) {
 int read_string(int fd, char *str) {
   ssize_t bytes_read = 0;
   char ch;
-  while (bytes_read < MAX_STRING_SIZE) {
-    if (read(fd, &ch, 1) != 1) {
+  while (bytes_read < MAX_STRING_SIZE - 1) {
+    ssize_t result = read(fd, &ch, 1);
+    if (result == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
       return -1;
+    }
+    if (result == 0) {
+      // EOF (FIFO closed by server)
+      if (bytes_read == 0) {
+        return 0;
+      }
+      break;
     }
     if (ch == '\0' || ch == '\n') {
       break;
