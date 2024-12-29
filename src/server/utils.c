@@ -48,48 +48,60 @@ void setup_signals() {
   pthread_create(&sigusr1_manager, NULL, sigusr1_handler_manager, NULL);
 }
 
-void setup_client_workers() {
+int setup_client_workers() {
   // Allocate memory for the worker threads array
   worker_threads = malloc(max_threads * sizeof(pthread_t));
   if (worker_threads == NULL) {
     fprintf(stderr, "Failed to allocate memory for worker threads\n");
-    return 1;
+    cleanup_and_exit(1);
   }
   // Create a pool of worker threads
   for (size_t i = 0; i < max_threads; i++) {
     if (pthread_create(&worker_threads[i], NULL, client_request_handler, NULL) != 0) {
       fprintf(stderr, "Failed to create worker thread\n");
-      return 1;
+      cleanup_and_exit(1);
     }
   }
-  return;
+  return 0;
 }
 
-void setup_server_fifo(char* server_fifo_path) {
+int setup_server_fifo(char* server_fifo_path) {
   // Create a thread to listen on the server fifo non blocking.
   if (pthread_create(&server_listener, NULL, connection_listener, server_fifo_path) != 0) {
     fprintf(stderr, "Failed to create connection manager thread\n");
     return 1;
   }
-  return;
+  return 0;
 }
 
 void exit_cleanup() {
-  // Signal the connection manager thread to exit
-  atomic_store(&connection_listener_alive, 0);
-  pthread_join(server_listener, NULL);
-
-  // Join worker threads
-  for (size_t i = 0; i < max_threads; i++) {
-    pthread_cancel(worker_threads[i]);
-    pthread_join(worker_threads[i], NULL);
+  // Signal the connection manager thread to exit if it was created
+  if (atomic_load(&connection_listener_alive)) {
+    atomic_store(&connection_listener_alive, 0);
+    pthread_join(server_listener, NULL);
   }
 
-  // Free the worker threads array
-  free(worker_threads);
+  // Join worker threads if they were created
+  if (worker_threads != NULL) {
+    for (size_t i = 0; i < max_threads; i++) {
+      if (worker_threads[i] != 0) {
+        pthread_cancel(worker_threads[i]);
+        pthread_join(worker_threads[i], NULL);
+      }
+    }
+    // Free the worker threads array
+    free(worker_threads);
+  }
 
   kvs_terminate();
 
-  pthread_cancel(sigusr1_manager);
-  pthread_join(sigusr1_manager, NULL);
+  if (sigusr1_manager != 0) {
+    pthread_cancel(sigusr1_manager);
+    pthread_join(sigusr1_manager, NULL);
+  }
+}
+
+void cleanup_and_exit(int exit_code) {
+  exit_cleanup();
+  exit(exit_code);
 }

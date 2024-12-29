@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
 		write_str(STDERR_FILENO, " <max_threads>");
 		write_str(STDERR_FILENO, " <max_backups>");
     write_str(STDERR_FILENO, " <server_fifo_path> \n");
-    return 1;
+    cleanup_and_exit(1);
   }
 
   jobs_directory = argv[1];
@@ -60,38 +60,38 @@ int main(int argc, char** argv) {
 
   if (*endptr != '\0') {
     fprintf(stderr, "Invalid max_proc value\n");
-    return 1;
+    cleanup_and_exit(1);
   }
 
   max_threads = strtoul(argv[2], &endptr, 10);
 
   if (*endptr != '\0') {
     fprintf(stderr, "Invalid max_threads value\n");
-    return 1;
+    cleanup_and_exit(1);
   }
 
 	if (max_backups <= 0) {
 		write_str(STDERR_FILENO, "Invalid number of backups\n");
-		return 0;
+		cleanup_and_exit(1);
 	}
 
 	if (max_threads <= 0) {
 		write_str(STDERR_FILENO, "Invalid number of threads\n");
-		return 0;
+		cleanup_and_exit(1);
 	}
 
   if (kvs_init()) {
     write_str(STDERR_FILENO, "Failed to initialize KVS\n");
-    return 1;
+    cleanup_and_exit(1);
   }
 
   DIR* dir = opendir(argv[1]);
   if (dir == NULL) {
     fprintf(stderr, "Failed to open directory: %s\n", argv[1]);
-    return 0;
+    cleanup_and_exit(1);
   }
   
-  init_session_buffer();
+  initialize_session_buffer();
 
   setup_client_workers();
 
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 
   if (closedir(dir) == -1) {
     fprintf(stderr, "Failed to close directory\n");
-    return 0;
+    cleanup_and_exit(1);
   }
 
   while (active_backups > 0) {
@@ -116,6 +116,5 @@ int main(int argc, char** argv) {
     sleep(1);
   }
   
-  exit_cleanup();
-  return 0;
+  cleanup_and_exit(0);
 }

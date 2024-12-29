@@ -12,7 +12,6 @@
 #include "common/constants.h"
 #include "utils.h"
 
-#define SERVER_RESPONSE_SIZE 2
 
 /// Connects to a KVS server.
 /// @param client_data Pointer to a struct holding client-specific information.

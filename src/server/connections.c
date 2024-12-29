@@ -18,7 +18,7 @@
 
 RequestBuffer session_buffer;
 
-void init_session_buffer() {
+void initialize_session_buffer() {
   session_buffer.in = 0;
   session_buffer.out = 0;
   sem_init(&session_buffer.full, 0, 0);
@@ -57,6 +57,96 @@ void disconnect_all_clients() {
   pthread_mutex_unlock(&session_buffer.buffer_lock);
 }
 
+void client_handle_subscribe(int resp_fifo_fd, int notif_fifo_fd, char* key) {
+  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_SUBSCRIBE, 0};
+  if (key != NULL) {
+    add_subscription(key, notif_fifo_fd);
+  } else {
+    response[1] = 1; // An error ocurred
+  }
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
+    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+  }
+}
+
+void client_handle_unsubscribe(int resp_fifo_fd, char* key) {
+  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_UNSUBSCRIBE, 0};
+  if (key != NULL) {
+    remove_subscription(key);
+  } else {
+    response[1] = 1; // An error ocurred
+  }
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
+    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+  }
+}
+
+void client_handle_disconnect(int resp_fifo_fd, int req_fifo_fd, int notif_fifo_fd) {
+  remove_client(notif_fifo_fd);
+  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_DISCONNECT, 0};
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
+    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+  }
+
+  close(req_fifo_fd);
+  close(resp_fifo_fd);
+  close(notif_fifo_fd);
+}
+
+void handle_client_request(ClientListenerData request) {
+  int req_fifo_fd = open(request.req_pipe_path, O_RDONLY | O_NONBLOCK);
+  int resp_fifo_fd = open(request.resp_pipe_path, O_WRONLY);
+  int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
+
+  if (req_fifo_fd == -1 || resp_fifo_fd == -1) {
+    fprintf(stderr, "Failed to open the client fifos.\n");
+    return;
+  }
+  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_CONNECT, 0}; // 0 indicates success
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
+    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+  }
+  char buffer[MAX_STRING_SIZE];
+  while (atomic_load(&request.terminate)) {
+    ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
+    if (bytes_read > 0) {
+      buffer[bytes_read] = '\0';
+      char* token = strtok(buffer, "|");
+      char* key;
+      int op_code_int = atoi(token);
+      enum OperationCode op_code = (enum OperationCode)op_code_int;
+
+      switch (op_code) {
+        case OP_CODE_SUBSCRIBE:
+          key = strtok(NULL, "|");
+          client_handle_subscribe(resp_fifo_fd, notif_fifo_fd, key);
+          break;
+        case OP_CODE_UNSUBSCRIBE:
+          key = strtok(NULL, "|");
+          client_handle_unsubscribe(resp_fifo_fd, key);
+          break;
+        case OP_CODE_DISCONNECT:
+          client_handle_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
+          return;
+        case OP_CODE_CONNECT:
+          // This case is not sent to request pipe only registry pipe (not read here).
+          break;
+        default:
+          fprintf(stderr, "Unknown operation code: %d\n", op_code);
+          response[0] = op_code;
+          response[1] = 1; // Error unknown operation code
+          if (write(resp_fifo_fd, response, 2) == -1) {
+            fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+          }
+          break;
+      }
+    }
+  }
+  close(req_fifo_fd);
+  close(resp_fifo_fd);
+  close(notif_fifo_fd);
+}
+
 void* client_request_handler() {
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
@@ -71,95 +161,7 @@ void* client_request_handler() {
     pthread_mutex_unlock(&session_buffer.buffer_lock);
     sem_post(&session_buffer.empty);
 
-    // Handle the client request
-    int req_fifo_fd = open(request.req_pipe_path, O_RDONLY | O_NONBLOCK);
-    int resp_fifo_fd = open(request.resp_pipe_path, O_WRONLY);
-    int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
-
-    if (req_fifo_fd == -1 || resp_fifo_fd == -1) {
-      fprintf(stderr, "Failed to open the client fifos.\n");
-      continue;
-    }
-
-    // Send result op code to client
-    char response[2] = {OP_CODE_CONNECT, 0}; // 0 indicates success
-    if (write(resp_fifo_fd, response, 2) == -1) {
-      fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-    }
-
-    char buffer[MAX_STRING_SIZE];
-    while (atomic_load(&request.terminate)) {
-      ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
-      if (bytes_read > 0) {
-        buffer[bytes_read] = '\0';
-
-        // Parse the client operation code request
-        char* token = strtok(buffer, "|");
-        char* key;
-        int op_code_int = atoi(token);
-        enum OperationCode op_code = (enum OperationCode)op_code_int;
-
-        switch (op_code) {
-          case OP_CODE_SUBSCRIBE:
-            key = strtok(NULL, "|");
-            if (key != NULL) {
-              add_subscription(key, notif_fifo_fd);
-              response[0] = OP_CODE_SUBSCRIBE;
-              response[1] = 0; // Success
-            } else {
-              response[0] = OP_CODE_SUBSCRIBE;
-              response[1] = 1; // Error
-            }
-            if (write(resp_fifo_fd, response, 2) == -1) {
-              fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-            }
-            break;
-
-          case OP_CODE_UNSUBSCRIBE:
-            key = strtok(NULL, "|");
-            if (key != NULL) {
-              remove_subscription(key);
-              response[0] = OP_CODE_UNSUBSCRIBE;
-              response[1] = 0; // Success
-            } else {
-              response[0] = OP_CODE_UNSUBSCRIBE;
-              response[1] = 1; // Error
-            }
-            if (write(resp_fifo_fd, response, 2) == -1) {
-              fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-            }
-            break;
-
-          case OP_CODE_DISCONNECT:
-            // Remove all subscriptions on the hashtable
-            remove_client(notif_fifo_fd);
-            // Send result op code to client
-            char disconnect_response[2] = {OP_CODE_DISCONNECT, 0}; // 0 indicates success
-            if (write(resp_fifo_fd, disconnect_response, 2) == -1) {
-              fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-            }
-            // Closes the client fifos (open on the server)
-            close(req_fifo_fd);
-            close(resp_fifo_fd);
-            close(notif_fifo_fd);
-            break;
-          case OP_CODE_CONNECT:
-            // This case is not sent to request pipe only registry pipe (not read here).
-            break;
-          default:
-            fprintf(stderr, "Unknown operation code: %d\n", op_code);
-            response[0] = op_code;
-            response[1] = 1; // Error unknown operation code
-            if (write(resp_fifo_fd, response, 2) == -1) {
-              fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-            }
-            break;
-        }
-      }
-    }
-    close(req_fifo_fd);
-    close(resp_fifo_fd);
-    close(notif_fifo_fd);
+    handle_client_request(request);
   }
   return NULL;
 }
