@@ -57,22 +57,13 @@ void disconnect_all_clients() {
   pthread_mutex_unlock(&session_buffer.buffer_lock);
 }
 
-void client_handle_subscribe(int resp_fifo_fd, int notif_fifo_fd, char* key) {
-  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_SUBSCRIBE, 0};
+void client_handle_subscriptions(int resp_fifo_fd, int notif_fifo_fd, char* key, enum OperationCode op_code) {
+  char response[SERVER_RESPONSE_SIZE] = {op_code, 0};
   if (key != NULL) {
-    add_subscription(key, notif_fifo_fd);
-  } else {
-    response[1] = 1; // An error ocurred
-  }
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
-    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-  }
-}
-
-void client_handle_unsubscribe(int resp_fifo_fd, char* key) {
-  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_UNSUBSCRIBE, 0};
-  if (key != NULL) {
-    remove_subscription(key);
+    if (op_code == OP_CODE_SUBSCRIBE)
+      add_subscription(key, notif_fifo_fd);
+    else if (op_code == OP_CODE_UNSUBSCRIBE)
+      remove_subscription(key);
   } else {
     response[1] = 1; // An error ocurred
   }
@@ -119,11 +110,11 @@ void handle_client_request(ClientListenerData request) {
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
-          client_handle_subscribe(resp_fifo_fd, notif_fifo_fd, key);
+          client_handle_subscriptions(resp_fifo_fd, notif_fifo_fd, key, OP_CODE_SUBSCRIBE);
           break;
         case OP_CODE_UNSUBSCRIBE:
           key = strtok(NULL, "|");
-          client_handle_unsubscribe(resp_fifo_fd, key);
+          client_handle_subscriptions(resp_fifo_fd, -1, key, OP_CODE_UNSUBSCRIBE);
           break;
         case OP_CODE_DISCONNECT:
           client_handle_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);

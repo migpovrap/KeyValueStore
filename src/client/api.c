@@ -7,7 +7,7 @@
 /// @param key Optional key associated with the operation
 /// (used for subscribe/unsubscribe); use NULL if not applicable.
 /// @param server_fifo_fd Pointer to the file descriptor for the
-/// server's FIFO; pass NULL if not applicable.
+/// server's FIFO; pass -1 if not applicable.
 /// @return 0 if the message was sent successfully, 1 otherwise.
 static int send_message(enum OperationCode opcode, const ClientData* client_data,
 const char* key, const int* server_fifo_fd) {

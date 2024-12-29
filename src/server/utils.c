@@ -3,7 +3,6 @@
 extern _Atomic int sigusr1_received;
 extern _Atomic int sigint_received;
 extern pthread_t* worker_threads;
-extern size_t max_threads; 
 extern pthread_t sigusr1_manager;
 extern pthread_t server_listener;
 extern atomic_bool connection_listener_alive;
@@ -50,13 +49,13 @@ void setup_signals() {
 
 int setup_client_workers() {
   // Allocate memory for the worker threads array
-  worker_threads = malloc(max_threads * sizeof(pthread_t));
+  worker_threads = malloc(MAX_SESSION_COUNT * sizeof(pthread_t));
   if (worker_threads == NULL) {
     fprintf(stderr, "Failed to allocate memory for worker threads\n");
     cleanup_and_exit(1);
   }
   // Create a pool of worker threads
-  for (size_t i = 0; i < max_threads; i++) {
+  for (int i = 0; i < MAX_SESSION_COUNT; i++) {
     if (pthread_create(&worker_threads[i], NULL, client_request_handler, NULL) != 0) {
       fprintf(stderr, "Failed to create worker thread\n");
       cleanup_and_exit(1);
@@ -83,7 +82,7 @@ void exit_cleanup() {
 
   // Join worker threads if they were created
   if (worker_threads != NULL) {
-    for (size_t i = 0; i < max_threads; i++) {
+    for (int i = 0; i < MAX_SESSION_COUNT; i++) {
       if (worker_threads[i] != 0) {
         pthread_cancel(worker_threads[i]);
         pthread_join(worker_threads[i], NULL);
