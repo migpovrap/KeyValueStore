@@ -74,36 +74,31 @@ int create_fifos() {
   return 0;
 }
 
-// Function assigned to the notification thread
+// Notification listener thread function
 void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
   while (1) {
-    pthread_mutex_lock(&client_mutex);
-    if (!client_data || client_data->terminate) {
-      pthread_mutex_unlock(&client_mutex);
-      break;
-    }
-    ssize_t bytes_read = read(client_data->notif_fifo_fd, buffer, MAX_STRING_SIZE - 1);
-    pthread_mutex_unlock(&client_mutex);
-
+    int bytes_read =  read_string(client_data->notif_fifo_fd, buffer);
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
         continue;
       } else {
-        perror("Error reading notification pipe.");
+        fprintf(stderr, "Error reading notification pipe.\n");
         break;
       }
     }
     if (bytes_read == 0) {
       fprintf(stderr, "Notification pipe closed by server.\n");
-      break;
+      kill(getpid(), SIGINT);
+      pthread_exit(NULL);
     }
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
       printf("Notification: %s\n", buffer);
     }
   }
+  close(client_data->notif_fifo_fd);
   return NULL;
 }
 
