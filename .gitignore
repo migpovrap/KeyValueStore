@@ -62,6 +62,7 @@ dkms.conf
 
 # Ignore executables
 kvs
+client
 
 # Ignore diff files
 *.diff
