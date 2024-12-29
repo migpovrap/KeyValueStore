@@ -6,19 +6,11 @@
 #include <semaphore.h>
 #include <stdatomic.h>
 
-typedef struct Buffer {
-  struct ClientFIFOs* consumer_producer_buffer[MAX_SESSION_COUNT];
-  int input;
-  int output;
-  sem_t full;
-  sem_t empty;
-  pthread_mutex_t buffer_mutex;
-} Buffer;
-
 typedef struct ClientThreads {
   pthread_t thread;
   atomic_bool client_listener_alive;
   struct ClientThreads* next;
+  pthread_mutex_t thread_data_lock;
 } ClientThreads;
 
 struct ClientFIFOs {
