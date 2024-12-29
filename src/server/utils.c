@@ -15,7 +15,7 @@ void handle_sigint() {
   atomic_store(&sigint_received, 1);
 }
 
-// SIGUSR1 thread handler function
+// Thread Function
 void* sigusr1_handler_manager() {
   while (1) {
     if (atomic_load(&sigusr1_received)) {
@@ -73,7 +73,7 @@ int setup_server_fifo(char* server_fifo_path) {
   return 0;
 }
 
-void exit_cleanup() {
+void cleanup_and_exit(int exit_code) {
   // Signal the connection manager thread to exit if it was created
   if (atomic_load(&connection_listener_alive)) {
     atomic_store(&connection_listener_alive, 0);
@@ -98,9 +98,5 @@ void exit_cleanup() {
     pthread_cancel(sigusr1_manager);
     pthread_join(sigusr1_manager, NULL);
   }
-}
-
-void cleanup_and_exit(int exit_code) {
-  exit_cleanup();
   exit(exit_code);
 }
