@@ -1,11 +1,9 @@
-#include "parser.h"
-
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "common/constants.h"
+#include "parser.h"
 
 // Reads a string and indicates the position from where it was
 // extracted, based on the KVS specification.

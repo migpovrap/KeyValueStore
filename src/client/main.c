@@ -1,12 +1,12 @@
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "client/api.h"
 #include "common/constants.h"
@@ -18,7 +18,8 @@ ClientData* client_data;
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
-    fprintf(stderr, "Usage: %s <client_unique_id> <register_pipe_path>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <client_unique_id> <register_pipe_path>\n",
+    argv[0]);
     return 1;
   }
   
@@ -32,9 +33,8 @@ int main(int argc, char* argv[]) {
 
   setup_signal_handling();
 
-  if (create_fifos() != 0) {
+  if (create_fifos() != 0)
     cleanup_and_exit(1);
-  }
 
   // Call FIFO cleanup at normal program exit
   atexit(cleanup_fifos);
@@ -46,12 +46,12 @@ int main(int argc, char* argv[]) {
   }
 
   // Create a thread for notifications
-  if (pthread_create(&client_data->notif_thread, NULL, notification_listener, NULL) != 0) {
+  if (pthread_create(&client_data->notif_thread, NULL, notification_listener,
+  NULL) != 0) {
     perror("pthread_create");
     cleanup_and_exit(1);
   }
 
-  // Set terminate when server closes fifos, notification_listener thread. Also "atomic_load"?
   while (!client_data->terminate) {
     char keys[MAX_NUMBER_SUB][MAX_STRING_SIZE] = {0};
     unsigned int delay_ms;
@@ -75,9 +75,8 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Invalid command. See HELP for usage.\n");
           continue;
         }
-        if (kvs_subscribe(client_data, keys[0])) {
+        if (kvs_subscribe(client_data, keys[0]))
           fprintf(stderr, "Command subscribe failed.\n");
-        }
         break;
 
       case CMD_UNSUBSCRIBE:
@@ -86,9 +85,8 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Invalid command. See HELP for usage.\n");
           continue;
         }
-        if (kvs_unsubscribe(client_data, keys[0])) {
+        if (kvs_unsubscribe(client_data, keys[0]))
           fprintf(stderr, "Command unsubscribe failed.\n");
-        }
         break;
 
       case CMD_DELAY:

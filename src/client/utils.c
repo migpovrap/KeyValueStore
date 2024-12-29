@@ -1,6 +1,7 @@
-#include "utils.h"
 #include <errno.h>
+
 #include "api.h"
+#include "utils.h"
 
 extern ClientData* client_data;
 

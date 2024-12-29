@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+
 #include "common/constants.h"
 
 typedef struct ClientData {
@@ -18,25 +19,26 @@ typedef struct ClientData {
   volatile sig_atomic_t terminate;
 } ClientData;
 
-// Initialize client data with the given client id
+/// Initialize client data with the given client id
+/// @param client_id The client's unique identifier.
 void initialize_client_data(char* client_id);
 
-// Unlink FIFOs and close file descriptors
+/// Unlink FIFOs and close file descriptors
 void cleanup_fifos();
 
-// Signal handler for SIGINT and SIGTERM
+/// Signal handler for SIGINT and SIGTERM
 void signal_handler();
 
-// Set up signal handling for termination signals
+/// Set up signal handling for termination signals
 void setup_signal_handling();
 
-// Create the required FIFOs for communication
+/// Create the required FIFOs for communication
 int create_fifos();
 
-// Function assigned to the notification thread
+/// Function assigned to the notification thread
 void* notification_listener();
 
-// Clean up and exit the program with the given exit code
+/// Clean up and exit the program with the given exit code
 void cleanup_and_exit(int exit_code);
 
 #endif // UTILS_H
