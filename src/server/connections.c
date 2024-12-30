@@ -179,7 +179,7 @@ void* connection_manager(void* args) {
 
   // Opens FIFO for reading.
   int server_fifo_fd;
-  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY)) == -1) {
+  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY | O_NONBLOCK)) == -1) {
     write_str(STDERR_FILENO, "Failed to open FIFO.\n");
     pthread_exit(NULL);
   }
