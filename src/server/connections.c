@@ -41,6 +41,13 @@ void create_request(ClientListenerData* request) {
   sem_post(&session_buffer.full);
 }
 
+void send_client_response (int resp_fifo_fd, enum OperationCode op_code, int error_code) {
+  char response[SERVER_RESPONSE_SIZE] = {op_code, (char)error_code};
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
+    write_str(STDERR_FILENO, "Failed to write to the client's response FIFO.\n");
+  }
+}
+
 void disconnect_all_clients() {
   pthread_mutex_lock(&session_buffer.buffer_mutex);
 
@@ -61,30 +68,23 @@ void disconnect_all_clients() {
 
 void handle_client_subscriptions(int resp_fifo_fd, int notif_fifo_fd,
 char* key, enum OperationCode op_code) {
-  char response[SERVER_RESPONSE_SIZE] = {op_code, 0};
   int result = 0;
   if (key != NULL) {
     if (op_code == OP_CODE_SUBSCRIBE)
       result = add_subscription(key, notif_fifo_fd);
     else if (op_code == OP_CODE_UNSUBSCRIBE)
       result = remove_subscription(key);
-    response[1] = (char)result;
   } else {
-    response[1] = 1; // If the key is NULL an error ocurred.
+    result = 1; // If the key is NULL an error ocurred.
   }
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    write_str(STDERR_FILENO, "Failed to write to the client's \
-    response FIFO.\n");
+  send_client_response(resp_fifo_fd, op_code, result);
 }
 
 void handle_client_disconnect(int resp_fifo_fd, int req_fifo_fd,
 int notif_fifo_fd) {
   remove_client(notif_fifo_fd);
-  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_DISCONNECT, 0};
 
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    write_str(STDERR_FILENO, "Failed to write to the client's \
-    response FIFO.\n");
+  send_client_response(resp_fifo_fd, OP_CODE_DISCONNECT, 0);
   
   close(req_fifo_fd);
   close(resp_fifo_fd);
@@ -101,11 +101,7 @@ void handle_client_request(ClientListenerData request) {
     return;
   }
 
-  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_CONNECT, 0};
-  
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    write_str(STDERR_FILENO, "Failed to write to the client's \
-    response FIFO.\n");
+  send_client_response(resp_fifo_fd, OP_CODE_CONNECT, 0);
   
   char buffer[MAX_STRING_SIZE];
   while (atomic_load(&request.terminate_client)) {
@@ -134,11 +130,7 @@ void handle_client_request(ClientListenerData request) {
           break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
-          response[0] = op_code;
-          response[1] = 1; // Error unknown operation code
-            if (write(resp_fifo_fd, response, 2) == -1)
-            write_str(STDERR_FILENO, "Failed to write to the client's \
-            response FIFO.\n");
+          send_client_response(resp_fifo_fd, op_code, 1);
           break;
       }
     }
