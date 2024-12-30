@@ -19,11 +19,11 @@ typedef struct ClientSubscriptions {
 /// Adds a subscription for a given key.
 /// @param key The key to subscribe to.
 /// @param notification_fifo_fd The file descriptor for the notification FIFO.
-void add_subscription(const char* key, int notification_fifo_fd);
+int add_subscription(const char* key, int notification_fifo_fd);
 
 /// Removes a subscription for a given key.
 /// @param key The key to unsubscribe from.
-void remove_subscription(const char* key);
+int remove_subscription(const char* key);
 
 /// Removes a client from all subscriptions.
 /// @param notification_fifo_fd The file descriptor for the notification FIFO.

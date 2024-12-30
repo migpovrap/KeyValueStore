@@ -56,11 +56,13 @@ void disconnect_all_clients() {
 void handle_client_subscriptions(int resp_fifo_fd, int notif_fifo_fd,
 char* key, enum OperationCode op_code) {
   char response[SERVER_RESPONSE_SIZE] = {op_code, 0};
+  int result = 0;
   if (key != NULL) {
     if (op_code == OP_CODE_SUBSCRIBE)
-      add_subscription(key, notif_fifo_fd);
+      result = add_subscription(key, notif_fifo_fd);
     else if (op_code == OP_CODE_UNSUBSCRIBE)
-      remove_subscription(key);
+      result = remove_subscription(key);
+    response[1] = (char)result;
   } else {
     response[1] = 1; // An error ocurred.
   }

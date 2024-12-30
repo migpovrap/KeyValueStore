@@ -138,6 +138,24 @@ void kvs_show(int fd) {
   pthread_rwlock_unlock(&kvs_table->tablelock);
 }
 
+int key_exists(const char *key) {
+  if (kvs_table == NULL) {
+    fprintf(stderr, "KVS state must be initialized\n");
+    return 0;
+  }
+
+  pthread_rwlock_rdlock(&kvs_table->tablelock);
+  char *result = read_pair(kvs_table, key);
+  pthread_rwlock_unlock(&kvs_table->tablelock);
+
+if (result == NULL) {
+  return 1; // Key does not exist
+} else {
+  free(result);
+  return 0; // Key exists
+}
+}
+
 int kvs_backup(size_t num_backup,char* job_filename , char* directory) {
   pid_t pid;
   char bck_name[50];

@@ -70,7 +70,7 @@ test2: server/kvs client/client
 test3: server/kvs client/client
 	@echo "Running test 3:"
 	@stdbuf -oL ./server/kvs ./server/jobs 2 2 ./teste.pipe | sed "s/^/\x1b[32m[SERVER]\x1b[0m /" & echo $$! > server_pid.tmp
-	@sleep 0.5
+	@sleep 1
 	@stdbuf -oL ./client/client 1 ./teste.pipe < ./tests/client_tests2.txt | sed "s/^/\x1b[34m[CLIENT_1]\x1b[0m /" &
 	@sleep 4
 	@kill -s SIGINT $$(cat server_pid.tmp)

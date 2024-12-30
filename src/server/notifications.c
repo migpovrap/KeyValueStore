@@ -4,14 +4,20 @@
 #include <unistd.h>
 
 #include "notifications.h"
+#include "operations.h"
 
-void add_subscription(const char* key, int notification_fifo_fd) {
+int add_subscription(const char* key, int notification_fifo_fd) {
   extern ClientSubscriptions all_subscriptions;
+
+  // Check if the key exists in the KVS
+  if (key_exists(key)) {
+    return 1; // Key does not exist
+  }
 
   SubscriptionData* new_sub = malloc(sizeof(SubscriptionData));
   if (new_sub == NULL) {
     fprintf(stderr, "Failed to allocate memory for subscrpition data.\n");
-    return;
+    return 1;
   }
 
   strncpy(new_sub->key, key, MAX_STRING_SIZE);
@@ -22,9 +28,11 @@ void add_subscription(const char* key, int notification_fifo_fd) {
   new_sub->next = all_subscriptions.subscription_data;
   all_subscriptions.subscription_data = new_sub;
   pthread_mutex_unlock(&all_subscriptions.lock);
+
+  return 0;
 }
 
-void remove_subscription(const char* key) {
+int remove_subscription(const char* key) {
   extern ClientSubscriptions all_subscriptions;
 
   pthread_mutex_lock(&all_subscriptions.lock);
@@ -39,13 +47,15 @@ void remove_subscription(const char* key) {
         prev->next = sub_data->next;
       }
       free(sub_data);
-      break;
+      pthread_mutex_unlock(&all_subscriptions.lock);
+      return 0;
     }
     prev = sub_data;
     sub_data = sub_data->next;
   }
 
   pthread_mutex_unlock(&all_subscriptions.lock);
+  return 1; // Key not found in subscriptions
 }
 
 void remove_client(int notification_fifo_fd) {

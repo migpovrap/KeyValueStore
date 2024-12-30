@@ -33,6 +33,11 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 /// @return 0 if the pairs were deleted successfully, 1 otherwise.
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 
+/// Checks if a given key exists in the database.
+/// @param key The key to be checked.
+/// @return 1 if the key exists, 0 otherwise.
+int key_exists(const char *key);
+
 /// Writes the state of the KVS.
 /// @param fd File descriptor to write the output.
 void kvs_show(int fd);
