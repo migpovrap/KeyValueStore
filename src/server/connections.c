@@ -1,20 +1,20 @@
-#include <unistd.h>
 #include <dirent.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdatomic.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <string.h>
+#include <fcntl.h>
 #include <semaphore.h>
+#include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include "common/constants.h"
+#include "common/protocol.h"
 #include "connections.h"
 #include "notifications.h"
-#include "common/protocol.h"
-#include "common/constants.h"
 
 RequestBuffer session_buffer;
 
@@ -26,13 +26,11 @@ void initialize_session_buffer() {
   pthread_mutex_init(&session_buffer.buffer_lock, NULL);
 }
 
-void produce_request(ClientListenerData request) {
+void create_request(ClientListenerData request) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_lock);
-
   session_buffer.session_data[session_buffer.in] = request;
   session_buffer.in = (session_buffer.in + 1) % MAX_SESSION_COUNT;
-
   pthread_mutex_unlock(&session_buffer.buffer_lock);
   sem_post(&session_buffer.full);
 }
@@ -40,24 +38,23 @@ void produce_request(ClientListenerData request) {
 void disconnect_all_clients() {
   pthread_mutex_lock(&session_buffer.buffer_lock);
 
-  // Iterate through the buffer and set the terminate flag for all clients
-  for (int i = 0; i < MAX_SESSION_COUNT; i++) {
+  // Iterate through the buffer and set the terminate flag for all clients.
+  for (int i = 0; i < MAX_SESSION_COUNT; i++)
     atomic_store(&session_buffer.session_data[i].terminate, 0);
-  }
 
-  // Clean up the buffer
+  // Clean up the buffer.
   session_buffer.in = 0;
   session_buffer.out = 0;
 
-  // Release all semaphores
-  while (sem_trywait(&session_buffer.full) == 0) {
+  // Release all semaphores.
+  while (sem_trywait(&session_buffer.full) == 0)
     sem_post(&session_buffer.empty);
-  }
 
   pthread_mutex_unlock(&session_buffer.buffer_lock);
 }
 
-void client_handle_subscriptions(int resp_fifo_fd, int notif_fifo_fd, char* key, enum OperationCode op_code) {
+void handle_client_subscriptions(int resp_fifo_fd, int notif_fifo_fd,
+char* key, enum OperationCode op_code) {
   char response[SERVER_RESPONSE_SIZE] = {op_code, 0};
   if (key != NULL) {
     if (op_code == OP_CODE_SUBSCRIBE)
@@ -65,20 +62,18 @@ void client_handle_subscriptions(int resp_fifo_fd, int notif_fifo_fd, char* key,
     else if (op_code == OP_CODE_UNSUBSCRIBE)
       remove_subscription(key);
   } else {
-    response[1] = 1; // An error ocurred
+    response[1] = 1; // An error ocurred.
   }
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
-    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-  }
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
+    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
 }
 
-void client_handle_disconnect(int resp_fifo_fd, int req_fifo_fd, int notif_fifo_fd) {
+void handle_client_disconnect(int resp_fifo_fd, int req_fifo_fd,
+int notif_fifo_fd) {
   remove_client(notif_fifo_fd);
   char response[SERVER_RESPONSE_SIZE] = {OP_CODE_DISCONNECT, 0};
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
-    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-  }
-
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
+    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
   close(req_fifo_fd);
   close(resp_fifo_fd);
   close(notif_fifo_fd);
@@ -89,14 +84,16 @@ void handle_client_request(ClientListenerData request) {
   int resp_fifo_fd = open(request.resp_pipe_path, O_WRONLY);
   int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
 
-  if (req_fifo_fd == -1 || resp_fifo_fd == -1) {
-    fprintf(stderr, "Failed to open the client fifos.\n");
+  if (req_fifo_fd == -1 || resp_fifo_fd == -1 || notif_fifo_fd == -1) {
+    fprintf(stderr, "Failed to open the client FIFOs.\n");
     return;
   }
+
   char response[SERVER_RESPONSE_SIZE] = {OP_CODE_CONNECT, 0}; // 0 indicates success
-  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
-    fprintf(stderr, "Failed to write to the response fifo of the client.\n");
-  }
+  
+  if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
+    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
+  
   char buffer[MAX_STRING_SIZE];
   while (atomic_load(&request.terminate)) {
     ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
@@ -110,24 +107,24 @@ void handle_client_request(ClientListenerData request) {
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
-          client_handle_subscriptions(resp_fifo_fd, notif_fifo_fd, key, OP_CODE_SUBSCRIBE);
+          handle_client_subscriptions(resp_fifo_fd, notif_fifo_fd, key, OP_CODE_SUBSCRIBE);
           break;
         case OP_CODE_UNSUBSCRIBE:
           key = strtok(NULL, "|");
-          client_handle_subscriptions(resp_fifo_fd, -1, key, OP_CODE_UNSUBSCRIBE);
+          handle_client_subscriptions(resp_fifo_fd, -1, key, OP_CODE_UNSUBSCRIBE);
           break;
         case OP_CODE_DISCONNECT:
-          client_handle_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
+          handle_client_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
           return;
         case OP_CODE_CONNECT:
-          // This case is not sent to request pipe only registry pipe (not read here).
+          // This case is not sent to request pipe only server pipe (not read here).
           break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
           response[0] = op_code;
           response[1] = 1; // Error unknown operation code
           if (write(resp_fifo_fd, response, 2) == -1) {
-            fprintf(stderr, "Failed to write to the response fifo of the client.\n");
+            fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
           }
           break;
       }
@@ -162,15 +159,15 @@ void* connection_listener(void* args) {
   char* server_pipe_path = (char*)args;
   int server_fifo_fd;
   
-  // Creates a named pipe (FIFO)
+  // Creates a FIFO.
   if(mkfifo(server_pipe_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
     fprintf(stderr, "Failed to create the named pipe or one already exists with the same name.\n");
     pthread_exit(NULL);
   }
 
-  // Opens the named pipe (FIFO) for reading
+  // Opens FIFO for reading.
   if ((server_fifo_fd = open(server_pipe_path, O_RDONLY)) == -1) {
-    fprintf(stderr, "Failed to open the named pipe (FIFO).\n");
+    fprintf(stderr, "Failed to open FIFO.\n");
     pthread_exit(NULL);
   }
 
@@ -199,7 +196,7 @@ void* connection_listener(void* args) {
         listener_data->resp_pipe_path = resp_pipe_path;
         listener_data->notif_pipe_path = notif_pipe_path;
         atomic_store(&listener_data->terminate, 1);
-        produce_request(*listener_data);
+        create_request(*listener_data);
 
       }
     }

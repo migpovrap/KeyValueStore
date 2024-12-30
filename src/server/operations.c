@@ -9,8 +9,8 @@
 #include "constants.h"
 #include "io.h"
 #include "kvs.h"
-#include "operations.h"
 #include "notifications.h"
+#include "operations.h"
 
 static struct HashTable *kvs_table = NULL;
 
@@ -159,13 +159,13 @@ int kvs_backup(size_t num_backup,char* job_filename , char* directory) {
         size_t num_bytes_copied = 1; // the "("
         // the - 1 are all to leave space for the '/0'
         num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-                                        keyNode->key, MAX_STRING_SIZE - num_bytes_copied - 1);
+        keyNode->key, MAX_STRING_SIZE - num_bytes_copied - 1);
         num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-                                        ", ", MAX_STRING_SIZE - num_bytes_copied - 1);
+        ", ", MAX_STRING_SIZE - num_bytes_copied - 1);
         num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-                                        keyNode->value, MAX_STRING_SIZE - num_bytes_copied - 1);
+        keyNode->value, MAX_STRING_SIZE - num_bytes_copied - 1);
         num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-                                        ")\n", MAX_STRING_SIZE - num_bytes_copied - 1);
+        ")\n", MAX_STRING_SIZE - num_bytes_copied - 1);
         aux[num_bytes_copied] = '\0';
         write_str(fd, aux);
         keyNode = keyNode->next; // Move to the next node of the list

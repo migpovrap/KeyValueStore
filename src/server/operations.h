@@ -2,6 +2,7 @@
 #define KVS_OPERATIONS_H
 
 #include <stddef.h>
+
 #include "constants.h"
 
 /// Initializes the KVS state.
@@ -48,16 +49,16 @@ void kvs_wait_backup();
 /// @param delay_us Delay in milliseconds.
 void kvs_wait(unsigned int delay_ms);
 
-// Setter for max_backups
-// @param _max_backups
+/// Setter for max_backups
+/// @param _max_backups
 void set_max_backups(int _max_backups);
 
-// Setter for n_current_backups
-// @param _n_current_backups
+/// Setter for n_current_backups
+/// @param _n_current_backups
 void set_n_current_backups(int _n_current_backups);
 
-// Getter for n_current_backups
-// @return n_current_backups
+/// Getter for n_current_backups
+/// @return n_current_backups
 int get_n_current_backups();
 
 #endif  // KVS_OPERATIONS_H

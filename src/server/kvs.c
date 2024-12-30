@@ -1,13 +1,9 @@
-#include "kvs.h"
-#include "string.h"
 #include <ctype.h>
-
 #include <stdlib.h>
 
-// Hash function based on key initial.
-// @param key Lowercase alphabetical string.
-// @return hash.
-// NOTE: This is not an ideal hash function, but is useful for test purposes of the project
+#include "kvs.h"
+#include "string.h"
+
 int hash(const char *key) {
     int firstLetter = tolower(key[0]);
     if (firstLetter >= 'a' && firstLetter <= 'z') {

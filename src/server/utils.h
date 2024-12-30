@@ -18,16 +18,16 @@ void handle_sigint();
 void* sigusr1_handler_manager();
 
 /// Setup signal handlers for SIGUSR1 and SIGINT.
-void setup_signals();
-
-/// Setup client worker threads.
-/// @return int Returns 0 on success, or a negative error code on failure.
-int setup_client_workers();
+void setup_signal_handling();
 
 /// Setup server FIFO listener thread.
 /// @param server_fifo_path The path to the server FIFO.
 /// @return int Returns 0 on success, or a negative error code on failure.
 int setup_server_fifo(char* server_fifo_path);
+
+/// Setup client worker threads.
+/// @return int Returns 0 on success, or a negative error code on failure.
+int setup_client_workers();
 
 /// Cleanup resources and exit the program.
 /// @param exit_code The exit code to be returned by the program.

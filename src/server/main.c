@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 
   setup_client_workers();
 
-  setup_signals();
+  setup_signal_handling();
 
   setup_server_fifo(argv[4]);
   

@@ -20,19 +20,22 @@ typedef struct HashTable {
 /// @return Newly created hash table, NULL on failure
 struct HashTable *create_hash_table();
 
+/// Hash function based on key initial.
+/// @param key Lowercase alphabetical string.
+/// @return hash.
 int hash(const char *key); 
 
-// Writes a key value pair in the hash table.
-// @param ht The hash table.
-// @param key The key.
-// @param value The value.
-// @return 0 if successful.
+/// Writes a key value pair in the hash table.
+/// @param ht The hash table.
+/// @param key The key.
+/// @param value The value.
+/// @return 0 if successful.
 int write_pair(HashTable *ht, const char *key, const char *value);
 
-// Reads the value of a given key.
-// @param ht The hash table.
-// @param key The key.
-// return the value if found, NULL otherwise.
+/// Reads the value of a given key.
+/// @param ht The hash table.
+/// @param key The key.
+/// return the value if found, NULL otherwise.
 char* read_pair(HashTable *ht, const char *key);
 
 /// Deletes a pair from the table.
@@ -44,6 +47,5 @@ int delete_pair(HashTable *ht, const char *key);
 /// Frees the hashtable.
 /// @param ht Hash table to be deleted.
 void free_table(HashTable *ht);
-
 
 #endif  // KVS_H

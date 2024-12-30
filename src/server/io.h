@@ -13,7 +13,7 @@ void write_str(int fd, const char *str);
 /// @param value The value to write.
 void write_uint(int fd, int value);
 
-/// @brief Copies bytes from src to dest, not including the '\0'
+/// Copies bytes from src to dest, not including the '\0'
 /// @param dest 
 /// @param src 
 /// @param n Maximum number of bytes to copy from src to dest

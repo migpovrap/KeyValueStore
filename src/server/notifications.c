@@ -1,8 +1,9 @@
-#include "notifications.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdio.h>
+
+#include "notifications.h"
 
 void add_subscription(const char* key, int notification_fifo_fd) {
   extern ClientSubscriptions all_subscriptions;

@@ -1,22 +1,22 @@
-#include "jobs_manager.h"
-#include "constants.h"
-#include "io.h"
-#include "common/protocol.h"
-#include "parser.h"
-#include "operations.h"
-
-#include <unistd.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdatomic.h>
+#include <unistd.h>
+
+#include "common/protocol.h"
+#include "constants.h"
+#include "io.h"
+#include "jobs_manager.h"
+#include "operations.h"
+#include "parser.h"
 
 int filter_job_files(const struct dirent* entry) {
   const char* dot = strrchr(entry->d_name, '.');

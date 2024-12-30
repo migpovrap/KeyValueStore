@@ -1,10 +1,10 @@
 #ifndef JOBS_MANAGER_H
 #define JOBS_MANAGER_H
 
-#include <pthread.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <unistd.h>
 
 typedef struct SharedData {
   DIR* dir;

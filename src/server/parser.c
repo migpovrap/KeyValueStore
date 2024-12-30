@@ -1,12 +1,10 @@
-#include "parser.h"
-
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "constants.h"
 #include "io.h"
+#include "parser.h"
 
 // Reads a string and indicates the position from where it was
 // extracted, based on the KVS specification.
@@ -23,7 +21,7 @@ static int read_string(int fd, char *buffer, size_t max) {
     bytes_read = read(fd, &ch, 1);
 
     if (bytes_read <= 0) {
-        return -1;
+      return -1;
     }
 
     if (ch == ' ') {
@@ -196,7 +194,6 @@ int parse_pair(int fd, char *key, char *value) {
     cleanup(fd);
     return 0;
   }
-
   return 1;
 }
 
