@@ -102,7 +102,6 @@ int kvs_disconnect(ClientData* client_data) {
   // Close named pipes.
   close(client_data->req_fifo_fd);
   close(client_data->resp_fifo_fd);
-  close(client_data->notif_fifo_fd);
   return 0;
 }
 
