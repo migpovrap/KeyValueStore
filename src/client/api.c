@@ -53,7 +53,7 @@ static int check_server_response(const int* resp_fifo_fd) {
   return server_response[1];
 }
 
-int kvs_connect(ClientData* client_data, const char* server_pipe_path) {
+int  kvs_connect(ClientData* client_data, const char* server_pipe_path) {
   int server_fifo_fd = open(server_pipe_path, O_WRONLY);
 
   if (server_fifo_fd == -1) {
@@ -98,10 +98,6 @@ int kvs_disconnect(ClientData* client_data) {
 
   if (server_response != 0)
     return 1;
-
-  // Close named pipes.
-  close(client_data->req_fifo_fd);
-  close(client_data->resp_fifo_fd);
   return 0;
 }
 

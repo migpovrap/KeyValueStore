@@ -17,8 +17,8 @@ all: server/kvs client/client
 server/kvs: common/protocol.h common/constants.h server/main.c server/operations.o server/kvs.o server/io.o server/parser.o common/io.o server/notifications.o server/connections.o server/jobs_manager.o
 	@$(CC) $(CFLAGS) $(SLEEP) -o $@ $^
 
-client/client: common/protocol.h common/constants.h client/main.c client/api.o client/parser.o common/io.o
-	@$(CC) $(CFLAGS) -o $@ $^
+client/client: common/protocol.h common/constants.h client/main.c client/api.o client/utils.o client/parser.o common/io.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c %.h
 	@$(CC) $(CFLAGS) -c ${@:.o=.c} -o $@

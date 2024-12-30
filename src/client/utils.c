@@ -1,27 +1,23 @@
-#include <errno.h>
-#include <stdatomic.h>
-
 #include "api.h"
 #include "utils.h"
 
 extern ClientData* client_data;
-volatile sig_atomic_t terminate_flag = 0;
-
 
 void initialize_client_data(char* client_id) {
+  snprintf(client_data->req_pipe_path, sizeof(client_data->req_pipe_path), "/tmp/req%s", client_id);
+  snprintf(client_data->resp_pipe_path, sizeof(client_data->resp_pipe_path), "/tmp/resp%s", client_id);
+  snprintf(client_data->notif_pipe_path, sizeof(client_data->notif_pipe_path), "/tmp/notif%s", client_id);
   client_data->req_fifo_fd = -1;
   client_data->resp_fifo_fd = -1;
   client_data->notif_fifo_fd = -1;
   client_data->client_subs = 0;
   client_data->terminate = 0;
-
-  snprintf(client_data->req_pipe_path, sizeof(client_data->req_pipe_path), "/tmp/req%s", client_id);
-  snprintf(client_data->resp_pipe_path, sizeof(client_data->resp_pipe_path), "/tmp/resp%s", client_id);
-  snprintf(client_data->notif_pipe_path, sizeof(client_data->notif_pipe_path), "/tmp/notif%s", client_id);
 }
 
 // Function to unlink FIFOs and close file descriptors
-void cleanup_fifos() {
+void cleanup() {
+  pthread_cancel(client_data->notif_thread);
+  pthread_join(client_data->notif_thread, NULL);
   if (client_data) {
     if (client_data->req_fifo_fd != -1) close(client_data->req_fifo_fd);
     if (client_data->resp_fifo_fd != -1) close(client_data->resp_fifo_fd);
@@ -36,21 +32,10 @@ void cleanup_fifos() {
   }
 }
 
-// Signal handler for SIGINT and SIGTERM
+// SIGINT and SIGTERM
 void signal_handler() {
-  terminate_flag = 1;
-}
-
-void check_terminate_signal() {
-  if (terminate_flag) {
-    if (client_data) {
-      client_data->terminate = 1;
-      pthread_cancel(client_data->notif_thread);
-      pthread_join(client_data->notif_thread, NULL);
-    }
-    cleanup_fifos();
-    _exit(0);
-  }
+  if (client_data)
+    client_data->terminate = 1;
 }
 
 void setup_signal_handling() {
@@ -60,6 +45,12 @@ void setup_signal_handling() {
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL); 
+}
+
+void check_terminate_signal() {
+  if (client_data && atomic_load(&client_data->terminate)) {
+    cleanup_and_exit(0);
+  }
 }
 
 int create_fifos() {
@@ -81,8 +72,12 @@ int create_fifos() {
 // Notification listener thread function
 void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
-  while (1) {
-    int bytes_read = read_string(client_data->notif_fifo_fd, buffer);
+  while (!atomic_load(&client_data->terminate)) {
+    int notif_fifo_fd = client_data->notif_fifo_fd;
+
+    if (notif_fifo_fd == -1) break;
+
+    int bytes_read = read_string(notif_fifo_fd, buffer);
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
@@ -102,11 +97,11 @@ void* notification_listener() {
       printf("Notification: %s\n", buffer);
     }
   }
-  close(client_data->notif_fifo_fd);
   return NULL;
 }
 
 void cleanup_and_exit(int exit_code) {
-  cleanup_fifos();
-  exit(exit_code);
+  client_data->terminate = 1;
+  cleanup();
+  _exit(exit_code);
 }

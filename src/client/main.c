@@ -1,18 +1,14 @@
-#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "client/api.h"
 #include "common/constants.h"
-#include "common/io.h"
 #include "parser.h"
-#include "utils.c"
+#include "utils.h"
 
 ClientData* client_data;
 
@@ -37,7 +33,7 @@ int main(int argc, char* argv[]) {
     cleanup_and_exit(1);
 
   // Call FIFO cleanup at normal program exit
-  atexit(cleanup_fifos);
+  atexit(cleanup);
 
   // Connect to the server
   if (kvs_connect(client_data, argv[2]) != 0) {
@@ -45,14 +41,14 @@ int main(int argc, char* argv[]) {
     cleanup_and_exit(1);
   }
 
-  // Create a thread for notifications
+  // Create a thread for notifications.
   if (pthread_create(&client_data->notif_thread, NULL, notification_listener,
   NULL) != 0) {
-    perror("pthread_create");
+    fprintf(stderr, "Error creating notification thread.\n");
     cleanup_and_exit(1);
   }
 
-  while (!client_data->terminate) {
+  while (!atomic_load(&client_data->terminate)) {
     char keys[MAX_NUMBER_SUB][MAX_STRING_SIZE] = {0};
     unsigned int delay_ms;
     size_t num;
@@ -65,8 +61,6 @@ int main(int argc, char* argv[]) {
           fprintf(stderr, "Failed to disconnect from the server.\n");
           cleanup_and_exit(1);
         }
-        pthread_cancel(client_data->notif_thread);
-        pthread_join(client_data->notif_thread, NULL);
         printf("Disconnected from server.\n");
         cleanup_and_exit(0);
         break;
