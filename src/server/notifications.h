@@ -12,7 +12,7 @@ typedef struct SubscriptionData {
 } SubscriptionData;
 
 typedef struct ClientSubscriptions {
-  pthread_mutex_t lock;
+  pthread_mutex_t mutex;
   struct SubscriptionData* subscription_data;
 } ClientSubscriptions;
 

@@ -1,5 +1,6 @@
 #include "api.h"
 #include "common/protocol.h"
+#include "server/io.h"
 
 /// Sends a message to the KVS server or the request pipe.
 /// @param opcode The operation code specifying the action to be performed.
@@ -9,8 +10,8 @@
 /// @param server_fifo_fd Pointer to the file descriptor for the
 /// server's FIFO; pass -1 if not applicable.
 /// @return 0 if the message was sent successfully, 1 otherwise.
-static int send_message(enum OperationCode opcode, const ClientData* client_data,
-const char* key, const int* server_fifo_fd) {
+static int send_message(enum OperationCode opcode,
+const ClientData* client_data, const char* key, const int* server_fifo_fd) {
   char message[MAX_PIPE_PATH_LENGTH * 3 + 3 + sizeof(int)];
   switch (opcode) {
     case OP_CODE_CONNECT:
@@ -103,8 +104,8 @@ int kvs_disconnect(ClientData* client_data) {
 
 int kvs_subscribe(ClientData* client_data, const char* key) {
   if (client_data->client_subs >= MAX_NUMBER_SUB) {
-    printf("Max number of subscriptions reached. Please unsubscribe \
-    from a key before subscribing to another.\n");
+    fprintf(stderr, "Max number of subscriptions reached. \
+    Please unsubscribe from a key before subscribing to another.\n");
     return 0;
   }
 

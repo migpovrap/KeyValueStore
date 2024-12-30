@@ -31,8 +31,9 @@ enum Command get_next(int fd);
 /// @param max_pairs Maximum number of pairs it will write.
 /// @param max_string_size Maximum string size allowed.
 /// @return 0 if the command was not parsed successfully, otherwise return the
-///         of pairs parsed.
-size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size);
+/// of pairs parsed.
+size_t parse_write(int fd, char keys[][MAX_STRING_SIZE],
+char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size);
 
 /// Parses a READ or a DELETE command.
 /// @param fd File descriptor to read from.
@@ -41,12 +42,13 @@ size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRIN
 /// @param max_string_size Maximum string size allowed.
 /// @return 0 if the command was not parsed successfully, otherwise return the
 ///         of keys parsed
-size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE], size_t max_keys, size_t max_string_size);
+size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE], size_t max_keys,
+size_t max_string_size);
 
 /// Parses a WAIT command.
 /// @param fd File descriptor to read from.
 /// @param delay Pointer to the variable to store the wait delay in.
-/// @param thread_id Pointer to the variable to store the thread ID in. May not be set.
+/// @param thread_id Pointer to the variable to store the thread ID in.
 /// @return 0 if no thread was specified, 1 if a thread was specified, -1 on error.
 int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id);
 

@@ -6,11 +6,11 @@
 #include "io.h"
 #include "parser.h"
 
-// Reads a string and indicates the position from where it was
-// extracted, based on the KVS specification.
-// @param fd File to read from.
-// @param buffer To write the string in.
-// @param max Maximum string size.
+/// Reads a string and indicates the position from where it was
+/// extracted, based on the KVS specification.
+/// @param fd File to read from.
+/// @param buffer To write the string in.
+/// @param max Maximum string size.
 static int read_string(int fd, char *buffer, size_t max) {
   ssize_t bytes_read;
   char ch;
@@ -49,11 +49,11 @@ static int read_string(int fd, char *buffer, size_t max) {
   return value;
 }
 
-// Reads a number and stores it in an unsigned integer
-// variable.
-// @param fd File to read from.
-// @param value To store the number in.
-// @param next Will point to the character succeding the number.
+/// Reads a number and stores it in an unsigned integer
+/// variable.
+/// @param fd File to read from.
+/// @param value To store the number in.
+/// @param next Will point to the character succeding the number.
 static int read_uint(int fd, unsigned int *value, char *next) {
   char buf[16];
 
@@ -85,8 +85,8 @@ static int read_uint(int fd, unsigned int *value, char *next) {
   return 0;
 }
 
-// Jumps file descriptor to next line.
-// @param fd File descriptor.
+/// Jumps file descriptor to next line.
+/// @param fd File descriptor.
 static void cleanup(int fd) {
   char ch;
   while (read(fd, &ch, 1) == 1 && ch != '\n')
@@ -197,7 +197,8 @@ int parse_pair(int fd, char *key, char *value) {
   return 1;
 }
 
-size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size) {
+size_t parse_write(int fd, char keys[][MAX_STRING_SIZE],
+char values[][MAX_STRING_SIZE], size_t max_pairs, size_t max_string_size) {
   char ch;
 
   if (read(fd, &ch, 1) != 1 || ch != '[') {
@@ -245,7 +246,8 @@ size_t parse_write(int fd, char keys[][MAX_STRING_SIZE], char values[][MAX_STRIN
   return num_pairs;
 }
 
-size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE], size_t max_keys, size_t max_string_size) {
+size_t parse_read_delete(int fd, char keys[][MAX_STRING_SIZE],
+size_t max_keys, size_t max_string_size) {
   char ch;
 
   if (read(fd, &ch, 1) != 1 || ch != '[') {

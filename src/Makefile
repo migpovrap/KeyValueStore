@@ -16,7 +16,7 @@ server/kvs: common/protocol.h common/constants.h server/main.c server/operations
 	@$(CC) $(CFLAGS) $(SLEEP) -o $@ $^
 
 client/client: common/protocol.h common/constants.h client/main.c client/api.o client/utils.o client/parser.o common/io.o
-	$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c %.h
 	@$(CC) $(CFLAGS) -c ${@:.o=.c} -o $@

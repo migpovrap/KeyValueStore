@@ -13,11 +13,11 @@ void write_str(int fd, const char *str);
 /// @param value The value to write.
 void write_uint(int fd, int value);
 
-/// Copies bytes from src to dest, not including the '\0'
+/// Copies bytes from src to dest, not including the '\0'.
 /// @param dest 
 /// @param src 
-/// @param n Maximum number of bytes to copy from src to dest
-/// @return Number of bytes copied
+/// @param n Maximum number of bytes to copy from src to destination.
+/// @return Number of bytes copied.
 size_t strn_memcpy(char* dest, const char* src, size_t n);
 
 #endif  // KVS_IO_H

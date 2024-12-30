@@ -1,12 +1,13 @@
 #ifndef CONNECTIONS_H
 #define CONNECTIONS_H
 
-#include <common/constants.h>
 #include <pthread.h>
 #include <stdatomic.h>
 
+#include "common/constants.h"
+
 typedef struct ClientListenerData {
-  atomic_bool terminate;
+  atomic_bool terminate_client;
   char* req_pipe_path; 
   char* resp_pipe_path; 
   char* notif_pipe_path;
@@ -18,13 +19,13 @@ typedef struct {
   int out;
   sem_t full;
   sem_t empty;
-  pthread_mutex_t buffer_lock;
+  pthread_mutex_t buffer_mutex;
 } RequestBuffer;
 
 /// Listens for incoming connections.
 /// @param args Arguments passed to the listener (if any).
 /// @return A pointer to the result (if any).
-void* connection_listener(void* args);
+void* connection_manager(void* args);
 
 /// Initializes the session buffer.
 void initialize_session_buffer();

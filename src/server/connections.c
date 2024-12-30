@@ -10,11 +10,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "common/constants.h"
 #include "common/protocol.h"
 #include "connections.h"
 #include "notifications.h"
+#include "server/io.h"
 
 RequestBuffer session_buffer;
 
@@ -23,24 +25,27 @@ void initialize_session_buffer() {
   session_buffer.out = 0;
   sem_init(&session_buffer.full, 0, 0);
   sem_init(&session_buffer.empty, 0, MAX_SESSION_COUNT);
-  pthread_mutex_init(&session_buffer.buffer_lock, NULL);
+  pthread_mutex_init(&session_buffer.buffer_mutex, NULL);
 }
 
 void create_request(ClientListenerData* request) {
+void create_request(ClientListenerData* request) {
   sem_wait(&session_buffer.empty);
-  pthread_mutex_lock(&session_buffer.buffer_lock);
+  pthread_mutex_lock(&session_buffer.buffer_mutex);
+
   session_buffer.session_data[session_buffer.in] = *request;
   session_buffer.in = (session_buffer.in + 1) % MAX_SESSION_COUNT;
-  pthread_mutex_unlock(&session_buffer.buffer_lock);
+  
+  pthread_mutex_unlock(&session_buffer.buffer_mutex);
   sem_post(&session_buffer.full);
 }
 
 void disconnect_all_clients() {
-  pthread_mutex_lock(&session_buffer.buffer_lock);
+  pthread_mutex_lock(&session_buffer.buffer_mutex);
 
   // Iterate through the buffer and set the terminate flag for all clients.
-  for (int i = 0; i < MAX_SESSION_COUNT; i++)
-    atomic_store(&session_buffer.session_data[i].terminate, 0);
+  for (int i = 0; i < MAX_SESSION_COUNT; ++i)
+    atomic_store(&session_buffer.session_data[i].terminate_client, 0);
 
   // Clean up the buffer.
   session_buffer.in = 0;
@@ -50,7 +55,7 @@ void disconnect_all_clients() {
   while (sem_trywait(&session_buffer.full) == 0)
     sem_post(&session_buffer.empty);
 
-  pthread_mutex_unlock(&session_buffer.buffer_lock);
+  pthread_mutex_unlock(&session_buffer.buffer_mutex);
 }
 
 void handle_client_subscriptions(int resp_fifo_fd, int notif_fifo_fd,
@@ -64,18 +69,22 @@ char* key, enum OperationCode op_code) {
       result = remove_subscription(key);
     response[1] = (char)result;
   } else {
-    response[1] = 1; // An error ocurred.
+    response[1] = 1; // If the key is NULL an error ocurred.
   }
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
+    write_str(STDERR_FILENO, "Failed to write to the client's \
+    response FIFO.\n");
 }
 
 void handle_client_disconnect(int resp_fifo_fd, int req_fifo_fd,
 int notif_fifo_fd) {
   remove_client(notif_fifo_fd);
   char response[SERVER_RESPONSE_SIZE] = {OP_CODE_DISCONNECT, 0};
+
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
+    write_str(STDERR_FILENO, "Failed to write to the client's \
+    response FIFO.\n");
+  
   close(req_fifo_fd);
   close(resp_fifo_fd);
   close(notif_fifo_fd);
@@ -87,17 +96,18 @@ void handle_client_request(ClientListenerData request) {
   int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
 
   if (req_fifo_fd == -1 || resp_fifo_fd == -1 || notif_fifo_fd == -1) {
-    fprintf(stderr, "Failed to open the client FIFOs.\n");
+    write_str(STDERR_FILENO, "Failed to open the client FIFOs.\n");
     return;
   }
 
-  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_CONNECT, 0}; // 0 indicates success
+  char response[SERVER_RESPONSE_SIZE] = {OP_CODE_CONNECT, 0};
   
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1)
-    fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
+    write_str(STDERR_FILENO, "Failed to write to the client's \
+    response FIFO.\n");
   
   char buffer[MAX_STRING_SIZE];
-  while (atomic_load(&request.terminate)) {
+  while (atomic_load(&request.terminate_client)) {
     ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
@@ -119,15 +129,15 @@ void handle_client_request(ClientListenerData request) {
           handle_client_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
           return;
         case OP_CODE_CONNECT:
-          // This case is not sent to request pipe only server pipe (not read here).
+          // This case is not read here since it is sent to the server pipe.
           break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
           response[0] = op_code;
           response[1] = 1; // Error unknown operation code
-          if (write(resp_fifo_fd, response, 2) == -1) {
-            fprintf(stderr, "Failed to write to the response FIFO of the client.\n");
-          }
+            if (write(resp_fifo_fd, response, 2) == -1)
+            write_str(STDERR_FILENO, "Failed to write to the client's \
+            response FIFO.\n");
           break;
       }
     }
@@ -143,12 +153,13 @@ void* client_request_handler() {
 
   while (1) {
     sem_wait(&session_buffer.full);
-    pthread_mutex_lock(&session_buffer.buffer_lock);
+    pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-    ClientListenerData request = session_buffer.session_data[session_buffer.out];
+    ClientListenerData request =
+    session_buffer.session_data[session_buffer.out];
     session_buffer.out = (session_buffer.out + 1) % MAX_SESSION_COUNT;
 
-    pthread_mutex_unlock(&session_buffer.buffer_lock);
+    pthread_mutex_unlock(&session_buffer.buffer_mutex);
     sem_post(&session_buffer.empty);
 
     handle_client_request(request);
@@ -156,20 +167,21 @@ void* client_request_handler() {
   return NULL;
 }
 
-void* connection_listener(void* args) {
-  extern atomic_bool terminate;
+void* connection_manager(void* args) {
+  extern _Atomic volatile sig_atomic_t terminate;
   char* server_pipe_path = (char*)args;
-  int server_fifo_fd;
   
   // Creates a FIFO.
-  if(mkfifo(server_pipe_path, 0666) == -1 && errno != EEXIST) { // Used to not recreate the pipe, overwrite it. When multiplie listener threads exist.
-    fprintf(stderr, "Failed to create the named pipe or one already exists with the same name.\n");
+  if(mkfifo(server_pipe_path, 0666) == -1 && errno != EEXIST) {
+    write_str(STDERR_FILENO, "Failed to create the named pipe or one \
+    already exists with the same name.\n");
     pthread_exit(NULL);
   }
 
   // Opens FIFO for reading.
-  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY | O_NONBLOCK)) == -1) {
-    fprintf(stderr, "Failed to open FIFO.\n");
+  int server_fifo_fd;
+  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY)) == -1) {
+    write_str(STDERR_FILENO, "Failed to open FIFO.\n");
     pthread_exit(NULL);
   }
 
@@ -179,7 +191,7 @@ void* connection_listener(void* args) {
      if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
 
-      // Parse the client operation code request
+      // Parse the client operation code request.
       char* token = strtok(buffer, "|");
       int op_code_int = atoi(token);
       enum OperationCode op_code = (enum OperationCode)op_code_int;
@@ -193,7 +205,7 @@ void* connection_listener(void* args) {
         listener_data.req_pipe_path = req_pipe_path;
         listener_data.resp_pipe_path = resp_pipe_path;
         listener_data.notif_pipe_path = notif_pipe_path;
-        atomic_store(&listener_data.terminate, 1);
+        atomic_store(&listener_data.terminate_client, 1);
         create_request(&listener_data);
 
       }

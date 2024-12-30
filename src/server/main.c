@@ -34,13 +34,11 @@ size_t max_backups;            // Maximum allowed simultaneous backups
 size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;   // Directory containing the jobs files
 pthread_t* worker_threads;     // Array of client worker threads
-pthread_t sigusr1_manager;     // Thread to listen for sigusr1 in a signal safe manner
-pthread_t server_listener;     // Thread to listen for server connections
+pthread_t sigusr1_manager;     // Thread to listen for sigusr1
+pthread_t server_listener;     // Thread to listen for client connections
 
-atomic_bool terminate = 0;
-
-_Atomic int sigusr1_received = 0;
-_Atomic int sigint_received = 0;
+volatile sig_atomic_t sigusr1_received = 0;
+_Atomic volatile sig_atomic_t terminate = 0;
 
 int main(int argc, char** argv) {
   if (argc < 4) {
@@ -59,29 +57,29 @@ int main(int argc, char** argv) {
   max_backups = strtoul(argv[3], &endptr, 10);
 
   if (*endptr != '\0') {
-    fprintf(stderr, "Invalid max_proc value\n");
+    write_str(STDERR_FILENO, "Invalid max_backups value.\n");
     cleanup_and_exit(1);
   }
 
   max_threads = strtoul(argv[2], &endptr, 10);
 
   if (*endptr != '\0') {
-    fprintf(stderr, "Invalid max_threads value\n");
+    write_str(STDERR_FILENO, "Invalid max_threads value.\n");
     cleanup_and_exit(1);
   }
 
 	if (max_backups <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of backups\n");
+		write_str(STDERR_FILENO, "Invalid number of backups.\n");
 		cleanup_and_exit(1);
 	}
 
 	if (max_threads <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of threads\n");
+		write_str(STDERR_FILENO, "Invalid number of threads.\n");
 		cleanup_and_exit(1);
 	}
 
   if (kvs_init()) {
-    write_str(STDERR_FILENO, "Failed to initialize KVS\n");
+    write_str(STDERR_FILENO, "Failed to initialize KVS.\n");
     cleanup_and_exit(1);
   }
 
@@ -102,7 +100,7 @@ int main(int argc, char** argv) {
   dispatch_threads(dir);
 
   if (closedir(dir) == -1) {
-    fprintf(stderr, "Failed to close directory\n");
+    write_str(STDERR_FILENO, "Failed to close directory.\n");
     cleanup_and_exit(1);
   }
 
@@ -111,10 +109,8 @@ int main(int argc, char** argv) {
     active_backups--;
   }
 
-  // Check to see when SIGINT is sent by the terminal (CTRL-C)
-  while (!atomic_load(&sigint_received)) {
+  while (!atomic_load(&terminate))
     sleep(1);
-  }
   
   cleanup_and_exit(0);
 }

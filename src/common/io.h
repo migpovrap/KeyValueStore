@@ -8,8 +8,10 @@
 /// @param fd File descriptor to read from.
 /// @param buffer Buffer to read into.
 /// @param size Number of bytes to read.
-/// @param intr Pointer to a variable that will be set to 1 if the read was interrupted.
-/// @return On success, returns 1, on end of file, returns 0, on error, returns -1
+/// @param intr Pointer to a variable that will be set to 1
+/// if the read was interrupted.
+/// @return On success, returns 1, on end of file, returns 0,
+/// on error, returns -1
 int read_all(int fd, void *buffer, size_t size, int *intr);
 
 int read_string(int fd, char *str);
@@ -22,6 +24,8 @@ int read_string(int fd, char *str);
 /// @return On success, returns 1, on error, returns -1
 int write_all(int fd, const void *buffer, size_t size);
 
+/// Delays the execution for a specified amount of time.
+/// @param time_ms The amount of time to delay in milliseconds.
 void delay(unsigned int time_ms);
 
 #endif  // COMMON_IO_H

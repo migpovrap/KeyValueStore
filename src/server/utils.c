@@ -1,30 +1,29 @@
 #include "server/utils.h"
 
-extern _Atomic int sigusr1_received;
-extern _Atomic int sigint_received;
+#include <signal.h>
+
 extern pthread_t* worker_threads;
 extern pthread_t sigusr1_manager;
 extern pthread_t server_listener;
-extern atomic_bool terminate;
+extern _Atomic volatile sig_atomic_t terminate;
+extern volatile sig_atomic_t sigusr1_received;
 
 void handle_sigusr1() {
-  atomic_store(&sigusr1_received, 1);
+  sigusr1_received = 1;
 }
 
 void handle_sigint() {
-  atomic_store(&sigint_received, 1);
+  terminate = 1;
 }
 
 // Thread Function
 void* sigusr1_handler_manager() {
-  while (1) {
-    if (atomic_load(&sigusr1_received)) {
-      clear_all_subscriptions();
-      disconnect_all_clients();
-      atomic_store(&sigusr1_received, 0);
-    }
+  while (!sigusr1_received) {
     sleep(1); // Small sleep between checks to avoid busy-waiting.
   }
+  clear_all_subscriptions();
+  disconnect_all_clients();
+  sigusr1_received = 0;
   return NULL;
 }
 
@@ -48,8 +47,9 @@ void setup_signal_handling() {
 }
 
 int setup_server_fifo(char* server_fifo_path) {
-  if (pthread_create(&server_listener, NULL, connection_listener, server_fifo_path) != 0) {
-    fprintf(stderr, "Failed to create connection manager thread.\n");
+  if (pthread_create(&server_listener, NULL, connection_manager,
+  server_fifo_path) != 0) {
+    write_str(STDERR_FILENO, "Failed to create connection manager thread.\n");
     return 1;
   }
   return 0;
@@ -59,13 +59,14 @@ int setup_client_workers() {
   // Allocate memory for the worker threads array.
   worker_threads = malloc(MAX_SESSION_COUNT * sizeof(pthread_t));
   if (worker_threads == NULL) {
-    fprintf(stderr, "Failed to allocate memory for worker threads.\n");
+    write_str(STDERR_FILENO, "Failed to allocate memory for worker threads.\n");
     cleanup_and_exit(1);
   }
   // Create a pool of worker threads.
   for (int i = 0; i < MAX_SESSION_COUNT; i++) {
-    if (pthread_create(&worker_threads[i], NULL, client_request_handler, NULL) != 0) {
-      fprintf(stderr, "Failed to create worker thread.\n");
+    if (pthread_create(&worker_threads[i], NULL, client_request_handler,
+    NULL) != 0) {
+      write_str(STDERR_FILENO, "Failed to create worker thread.\n");
       cleanup_and_exit(1);
     }
   }

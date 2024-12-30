@@ -12,6 +12,8 @@ typedef struct SharedData {
   pthread_mutex_t directory_mutex;
 } SharedData;
 
+/// Creates threads and releases them in the given directory to process jobs.
+/// @param dir Directory where threads will look for jobs.
 void dispatch_threads(DIR* dir);
 
 #endif

@@ -1,12 +1,15 @@
 #include "api.h"
-#include "utils.h"
+#include "client/utils.h"
 
 extern ClientData* client_data;
 
 void initialize_client_data(char* client_id) {
-  snprintf(client_data->req_pipe_path, sizeof(client_data->req_pipe_path), "/tmp/req%s", client_id);
-  snprintf(client_data->resp_pipe_path, sizeof(client_data->resp_pipe_path), "/tmp/resp%s", client_id);
-  snprintf(client_data->notif_pipe_path, sizeof(client_data->notif_pipe_path), "/tmp/notif%s", client_id);
+  snprintf(client_data->req_pipe_path, sizeof(client_data->req_pipe_path),
+  "/tmp/req%s", client_id);
+  snprintf(client_data->resp_pipe_path, sizeof(client_data->resp_pipe_path),
+  "/tmp/resp%s", client_id);
+  snprintf(client_data->notif_pipe_path, sizeof(client_data->notif_pipe_path),
+  "/tmp/notif%s", client_id);
   client_data->req_fifo_fd = -1;
   client_data->resp_fifo_fd = -1;
   client_data->notif_fifo_fd = -1;

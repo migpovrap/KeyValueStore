@@ -9,8 +9,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "client/utils.h"
 #include "common/constants.h"
-#include "utils.h"
 
 
 /// Connects to a KVS server.

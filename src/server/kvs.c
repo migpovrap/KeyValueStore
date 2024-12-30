@@ -81,10 +81,12 @@ int delete_pair(HashTable *ht, const char *key) {
             // Key found; delete this node
             if (prevNode == NULL) {
                 // Node to delete is the first node in the list
-                ht->table[index] = keyNode->next; // Update the table to point to the next node
+                // Update the table to point to the next node
+                ht->table[index] = keyNode->next;
             } else {
                 // Node to delete is not the first; bypass it
-                prevNode->next = keyNode->next; // Link the previous node to the next node
+                // Link the previous node to the next node
+                prevNode->next = keyNode->next;
             }
             // Free the memory allocated for the key and value
             free(keyNode->key);

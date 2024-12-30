@@ -23,7 +23,7 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
 
 int kvs_init() {
   if (kvs_table != NULL) {
-    fprintf(stderr, "KVS state has already been initialized\n");
+    write_str(STDERR_FILENO, "KVS state has already been initialized.\n");
     return 1;
   }
 
@@ -33,7 +33,7 @@ int kvs_init() {
 
 int kvs_terminate() {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 1;
   }
 
@@ -43,9 +43,9 @@ int kvs_terminate() {
 }
 
 int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
-              char values[][MAX_STRING_SIZE]) {
+char values[][MAX_STRING_SIZE]) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 1;
   }
 
@@ -64,7 +64,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
 
 int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 1;
   }
   
@@ -90,7 +90,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
 
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 1;
   }
   
@@ -119,7 +119,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
 
 void kvs_show(int fd) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return;
   }
   
@@ -129,7 +129,8 @@ void kvs_show(int fd) {
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i]; // Get the next list head
     while (keyNode != NULL) {
-      snprintf(aux, MAX_STRING_SIZE, "(%s, %s)\n", keyNode->key, keyNode->value);
+      snprintf(aux, MAX_STRING_SIZE, "(%s, %s)\n",
+      keyNode->key, keyNode->value);
       write_str(fd, aux);
       keyNode = keyNode->next; // Move to the next node of the list
     }
@@ -140,7 +141,7 @@ void kvs_show(int fd) {
 
 int key_exists(const char *key) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 0;
   }
 
@@ -159,8 +160,8 @@ if (result == NULL) {
 int kvs_backup(size_t num_backup,char* job_filename , char* directory) {
   pid_t pid;
   char bck_name[50];
-  snprintf(bck_name, sizeof(bck_name), "%s/%s-%ld.bck", directory, strtok(job_filename, "."),
-           num_backup);
+  snprintf(bck_name, sizeof(bck_name), "%s/%s-%ld.bck",
+  directory, strtok(job_filename, "."), num_backup);
 
   pthread_rwlock_rdlock(&kvs_table->tablelock);
   pid = fork();

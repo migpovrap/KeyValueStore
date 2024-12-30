@@ -26,9 +26,11 @@ int filter_job_files(const struct dirent* entry) {
   return 0;
 }
 
-static int entry_files(const char* dir, struct dirent* entry, char* in_path, char* out_path) {
+static int entry_files(const char* dir, struct dirent* entry,
+char* in_path, char* out_path) {
   const char* dot = strrchr(entry->d_name, '.');
-  if (dot == NULL || dot == entry->d_name || strlen(dot) != 4 || strcmp(dot, ".job")) {
+  if (dot == NULL || dot == entry->d_name || strlen(dot) != 4 ||
+  strcmp(dot, ".job")) {
     return 1;
   }
 
@@ -62,7 +64,8 @@ static int run_job(int in_fd, int out_fd, char* filename) {
 
     switch (get_next(in_fd)) {
       case CMD_WRITE:
-        num_pairs = parse_write(in_fd, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_write(in_fd, keys, values, MAX_WRITE_SIZE,
+        MAX_STRING_SIZE);
         if (num_pairs == 0) {
           write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
           continue;
@@ -74,7 +77,8 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         break;
 
       case CMD_READ:
-        num_pairs = parse_read_delete(in_fd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_read_delete(in_fd, keys, MAX_WRITE_SIZE,
+        MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
           write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
@@ -87,7 +91,8 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         break;
 
       case CMD_DELETE:
-        num_pairs = parse_read_delete(in_fd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_read_delete(in_fd, keys, MAX_WRITE_SIZE,
+        MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
           write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
@@ -144,7 +149,7 @@ static int run_job(int in_fd, int out_fd, char* filename) {
             "  DELETE [key,key2,...]\n"
             "  SHOW\n"
             "  WAIT <delay_ms>\n"
-            "  BACKUP\n" // Not implemented
+            "  BACKUP\n" // Not implemented.
             "  HELP\n");
 
         break;
@@ -165,7 +170,7 @@ static void* get_file(void* arguments) {
   char* dir_name = thread_data->dir_name;
 
   if (pthread_mutex_lock(&thread_data->directory_mutex) != 0) {
-    fprintf(stderr, "Thread failed to lock directory_mutex\n");
+    write_str(STDERR_FILENO, "Thread failed to lock directory_mutex\n");
     return NULL;
   }
 
@@ -177,7 +182,7 @@ static void* get_file(void* arguments) {
     }
 
     if (pthread_mutex_unlock(&thread_data->directory_mutex) != 0) {
-      fprintf(stderr, "Thread failed to unlock directory_mutex\n");
+      write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex\n");
       return NULL;
     }
 
@@ -204,7 +209,7 @@ static void* get_file(void* arguments) {
 
     if (out) {
       if (closedir(dir) == -1) {
-        fprintf(stderr, "Failed to close directory\n");
+        write_str(STDERR_FILENO, "Failed to close directory\n");
         return 0;
       }
 
@@ -212,13 +217,13 @@ static void* get_file(void* arguments) {
     }
 
     if (pthread_mutex_lock(&thread_data->directory_mutex) != 0) {
-      fprintf(stderr, "Thread failed to lock directory_mutex\n");
+      write_str(STDERR_FILENO, "Thread failed to lock directory_mutex\n");
       return NULL;
     }
   }
 
   if (pthread_mutex_unlock(&thread_data->directory_mutex) != 0) {
-    fprintf(stderr, "Thread failed to unlock directory_mutex\n");
+    write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex\n");
     return NULL;
   }
 
@@ -232,7 +237,7 @@ void dispatch_threads(DIR* dir) {
   pthread_t* threads = malloc(max_threads * sizeof(pthread_t));
 
   if (threads == NULL) {
-    fprintf(stderr, "Failed to allocate memory for threads\n");
+    write_str(STDERR_FILENO, "Failed to allocate memory for threads\n");
     return;
   }
 
@@ -260,7 +265,7 @@ void dispatch_threads(DIR* dir) {
   }
 
   if (pthread_mutex_destroy(&thread_data.directory_mutex) != 0) {
-    fprintf(stderr, "Failed to destroy directory_mutex\n");
+    write_str(STDERR_FILENO, "Failed to destroy directory_mutex\n");
   }
 
   free(threads);

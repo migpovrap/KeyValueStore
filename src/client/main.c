@@ -6,9 +6,9 @@
 #include <unistd.h>
 
 #include "client/api.h"
+#include "client/utils.h"
 #include "common/constants.h"
 #include "parser.h"
-#include "utils.h"
 
 ClientData* client_data;
 

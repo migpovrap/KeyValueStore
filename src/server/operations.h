@@ -18,7 +18,8 @@ int kvs_terminate();
 /// @param keys Array of keys' strings.
 /// @param values Array of values' strings.
 /// @return 0 if the pairs were written successfully, 1 otherwise.
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE]);
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
+char values[][MAX_STRING_SIZE]);
 
 /// Reads values from the KVS.
 /// @param num_pairs Number of pairs to read.
@@ -42,28 +43,15 @@ int key_exists(const char *key);
 /// @param fd File descriptor to write the output.
 void kvs_show(int fd);
 
-/// Creates a backup of the KVS state and stores it in the correspondent
-/// backup file
+/// Creates a backup of the KVS state and stores it in a backup file.
+/// @param num_backup The number of the backup to be created.
+/// @param job_filename The name of the file where the backup will be stored.
+/// @param directory The directory where the backup file will be saved.
 /// @return 0 if the backup was successful, 1 otherwise.
 int kvs_backup(size_t num_backup,char* job_filename , char* directory);
-
-/// Waits for the last backup to be called.
-void kvs_wait_backup();
 
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
 void kvs_wait(unsigned int delay_ms);
-
-/// Setter for max_backups
-/// @param _max_backups
-void set_max_backups(int _max_backups);
-
-/// Setter for n_current_backups
-/// @param _n_current_backups
-void set_n_current_backups(int _n_current_backups);
-
-/// Getter for n_current_backups
-/// @return n_current_backups
-int get_n_current_backups();
 
 #endif  // KVS_OPERATIONS_H
