@@ -2,28 +2,53 @@
 
 #include <signal.h>
 
-extern pthread_t* worker_threads;
-extern pthread_t sigusr1_manager;
-extern pthread_t server_listener;
-extern _Atomic volatile sig_atomic_t terminate;
-extern volatile sig_atomic_t sigusr1_received;
+extern ServerData* server_data;
+
+void initialize_server_data(char* job_path,
+char* max_threads, char* max_backups) {
+  char* endptr;
+  server_data->max_backups = strtoul(max_backups, &endptr, 10);
+  if (*endptr != '\0') {
+    write_str(STDERR_FILENO, "Invalid max_backups value.\n");
+    cleanup_and_exit(1);
+  } else if (*max_backups <= 0) {
+		write_str(STDERR_FILENO, "Invalid number of backups.\n");
+		cleanup_and_exit(1);
+	}
+  server_data->max_threads = strtoul(max_threads, &endptr, 10);
+  if (*endptr != '\0') {
+		write_str(STDERR_FILENO, "Invalid max_threads value.\n");
+    cleanup_and_exit(1);
+  } else if (*max_threads <= 0) {
+		write_str(STDERR_FILENO, "Invalid number of threads.\n");
+		cleanup_and_exit(1);
+	}
+
+  pthread_mutex_init(&server_data->backups_mutex, NULL);
+  pthread_mutex_init(&server_data->all_subscriptions.mutex, NULL);
+  server_data->all_subscriptions.subscription_data = NULL;
+  server_data->active_backups = 0;
+  server_data->jobs_directory = job_path;
+  server_data->terminate = 0;
+  server_data->sigusr1_received = 0;
+}
 
 void handle_sigusr1() {
-  sigusr1_received = 1;
+  server_data->sigusr1_received = 1;
 }
 
 void handle_sigint() {
-  terminate = 1;
+  server_data->terminate = 1;
 }
 
 // Thread Function
 void* sigusr1_handler_manager() {
-  while (!sigusr1_received) {
+  while (!server_data->sigusr1_received) {
     sleep(1); // Small sleep between checks to avoid busy-waiting.
   }
   clear_all_subscriptions();
   disconnect_all_clients();
-  sigusr1_received = 0;
+  server_data->sigusr1_received = 0;
   return NULL;
 }
 
@@ -43,12 +68,13 @@ void setup_signal_handling() {
   sigaction(SIGINT, &sa_int, NULL);
 
   // Create a thread to listen for the SIGUSR1 signal.
-  pthread_create(&sigusr1_manager, NULL, sigusr1_handler_manager, NULL);
+  pthread_create(&server_data->sigusr1_listener, NULL,
+  sigusr1_handler_manager, NULL);
 }
 
 int setup_server_fifo(char* server_fifo_path) {
-  if (pthread_create(&server_listener, NULL, connection_manager,
-  server_fifo_path) != 0) {
+  if (pthread_create(&server_data->connection_manager, NULL,
+  connection_manager, server_fifo_path) != 0) {
     write_str(STDERR_FILENO, "Failed to create connection manager thread.\n");
     return 1;
   }
@@ -57,15 +83,15 @@ int setup_server_fifo(char* server_fifo_path) {
 
 int setup_client_workers() {
   // Allocate memory for the worker threads array.
-  worker_threads = malloc(MAX_SESSION_COUNT * sizeof(pthread_t));
-  if (worker_threads == NULL) {
+  server_data->worker_threads = malloc(MAX_SESSION_COUNT * sizeof(pthread_t));
+  if (server_data->worker_threads == NULL) {
     write_str(STDERR_FILENO, "Failed to allocate memory for worker threads.\n");
     cleanup_and_exit(1);
   }
   // Create a pool of worker threads.
   for (int i = 0; i < MAX_SESSION_COUNT; i++) {
-    if (pthread_create(&worker_threads[i], NULL, client_request_handler,
-    NULL) != 0) {
+    if (pthread_create(&server_data->worker_threads[i], NULL,
+    client_request_handler, NULL) != 0) {
       write_str(STDERR_FILENO, "Failed to create worker thread.\n");
       cleanup_and_exit(1);
     }
@@ -75,28 +101,28 @@ int setup_client_workers() {
 
 void cleanup_and_exit(int exit_code) {
   // Signal the connection manager thread to exit if it was created.
-  if (atomic_load(&terminate)) {
-    atomic_store(&terminate, 1);
-    pthread_join(server_listener, NULL);
+  if (atomic_load(&server_data->terminate)) {
+    atomic_store(&server_data->terminate, 1);
+    pthread_join(server_data->connection_manager, NULL);
   }
 
   // Join worker threads if they were created.
-  if (worker_threads != NULL) {
+  if (server_data->worker_threads != NULL) {
     for (int i = 0; i < MAX_SESSION_COUNT; i++) {
-      if (worker_threads[i] != 0) {
-        pthread_cancel(worker_threads[i]);
-        pthread_join(worker_threads[i], NULL);
+      if (server_data->worker_threads[i] != 0) {
+        pthread_cancel(server_data->worker_threads[i]);
+        pthread_join(server_data->worker_threads[i], NULL);
       }
     }
     // Free the worker threads array.
-    free(worker_threads);
+    free(server_data->worker_threads);
   }
 
   kvs_terminate();
 
-  if (sigusr1_manager != 0) {
-    pthread_cancel(sigusr1_manager);
-    pthread_join(sigusr1_manager, NULL);
+  if (server_data->sigusr1_listener != 0) {
+    pthread_cancel(server_data->sigusr1_listener);
+    pthread_join(server_data->sigusr1_listener, NULL);
   }
-  exit(exit_code);
+  _exit(exit_code);
 }

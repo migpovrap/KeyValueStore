@@ -24,21 +24,7 @@
 #include "jobs_manager.h"
 #include "server/utils.c"
 
-
-pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
-
-ClientSubscriptions all_subscriptions = {PTHREAD_MUTEX_INITIALIZER, NULL};
-
-size_t active_backups = 0;     // Number of active backups
-size_t max_backups;            // Maximum allowed simultaneous backups
-size_t max_threads;            // Maximum allowed simultaneous threads
-char* jobs_directory = NULL;   // Directory containing the jobs files
-pthread_t* worker_threads;     // Array of client worker threads
-pthread_t sigusr1_manager;     // Thread to listen for sigusr1
-pthread_t server_listener;     // Thread to listen for client connections
-
-volatile sig_atomic_t sigusr1_received = 0;
-_Atomic volatile sig_atomic_t terminate = 0;
+ServerData* server_data;
 
 int main(int argc, char** argv) {
   if (argc < 4) {
@@ -51,32 +37,13 @@ int main(int argc, char** argv) {
     cleanup_and_exit(1);
   }
 
-  jobs_directory = argv[1];
-
-  char* endptr;
-  max_backups = strtoul(argv[3], &endptr, 10);
-
-  if (*endptr != '\0') {
-    write_str(STDERR_FILENO, "Invalid max_backups value.\n");
+  server_data = malloc(sizeof(ServerData));
+  if (!server_data) {
+    fprintf(stderr, "Failed to allocate memory for server data.\n");
     cleanup_and_exit(1);
   }
 
-  max_threads = strtoul(argv[2], &endptr, 10);
-
-  if (*endptr != '\0') {
-    write_str(STDERR_FILENO, "Invalid max_threads value.\n");
-    cleanup_and_exit(1);
-  }
-
-	if (max_backups <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of backups.\n");
-		cleanup_and_exit(1);
-	}
-
-	if (max_threads <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of threads.\n");
-		cleanup_and_exit(1);
-	}
+  initialize_server_data(argv[1], argv[2], argv[3]);
 
   if (kvs_init()) {
     write_str(STDERR_FILENO, "Failed to initialize KVS.\n");
@@ -104,12 +71,12 @@ int main(int argc, char** argv) {
     cleanup_and_exit(1);
   }
 
-  while (active_backups > 0) {
+  while (server_data->active_backups > 0) {
     wait(NULL);
-    active_backups--;
+    server_data->active_backups--;
   }
 
-  while (!atomic_load(&terminate))
+  while (!atomic_load(&server_data->terminate))
     sleep(1);
   
   cleanup_and_exit(0);

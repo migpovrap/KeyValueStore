@@ -17,7 +17,9 @@
 #include "connections.h"
 #include "notifications.h"
 #include "server/io.h"
+#include "server/utils.h"
 
+extern ServerData* server_data;
 RequestBuffer session_buffer;
 
 void initialize_session_buffer() {
@@ -167,7 +169,6 @@ void* client_request_handler() {
 }
 
 void* connection_manager(void* args) {
-  extern _Atomic volatile sig_atomic_t terminate;
   char* server_pipe_path = (char*)args;
   
   // Creates a FIFO.
@@ -184,7 +185,7 @@ void* connection_manager(void* args) {
     pthread_exit(NULL);
   }
 
-  while (!atomic_load(&terminate)) {
+  while (!atomic_load(&server_data->terminate)) {
     char buffer[MAX_STRING_SIZE];
     ssize_t bytes_read = read(server_fifo_fd, buffer, MAX_STRING_SIZE);
      if (bytes_read > 0) {

@@ -17,6 +17,9 @@
 #include "jobs_manager.h"
 #include "operations.h"
 #include "parser.h"
+#include "server/utils.h"
+
+extern ServerData* server_data;
 
 int filter_job_files(const struct dirent* entry) {
   const char* dot = strrchr(entry->d_name, '.');
@@ -50,11 +53,6 @@ char* in_path, char* out_path) {
 }
 
 static int run_job(int in_fd, int out_fd, char* filename) {
-  extern pthread_mutex_t n_current_backups_lock;
-  extern size_t active_backups;
-  extern size_t max_backups;
-  extern char* jobs_directory;
-
   size_t file_backups = 0;
   while (1) {
     char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
@@ -121,14 +119,15 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         break;
 
       case CMD_BACKUP:
-        pthread_mutex_lock(&n_current_backups_lock);
-        if (active_backups >= max_backups) {
+        pthread_mutex_lock(&server_data->backups_mutex);
+        if (server_data->active_backups >= server_data->max_backups) {
           wait(NULL);
         } else {
-          active_backups++;
+          server_data->active_backups++;
         }
-        pthread_mutex_unlock(&n_current_backups_lock);
-        int aux = kvs_backup(++file_backups, filename, jobs_directory);
+        pthread_mutex_unlock(&server_data->backups_mutex);
+        int aux = kvs_backup(++file_backups, filename,
+        server_data->jobs_directory);
 
         if (aux < 0) {
             write_str(STDERR_FILENO, "Failed to do backup\n");
@@ -231,20 +230,18 @@ static void* get_file(void* arguments) {
 }
 
 void dispatch_threads(DIR* dir) {
-  extern char* jobs_directory;
-  extern size_t max_threads;
-
-  pthread_t* threads = malloc(max_threads * sizeof(pthread_t));
+  pthread_t* threads = malloc(server_data->max_threads * sizeof(pthread_t));
 
   if (threads == NULL) {
     write_str(STDERR_FILENO, "Failed to allocate memory for threads\n");
     return;
   }
 
-  SharedData thread_data = {dir, jobs_directory, PTHREAD_MUTEX_INITIALIZER};
+  SharedData thread_data = {dir, server_data->jobs_directory,
+  PTHREAD_MUTEX_INITIALIZER};
 
 
-  for (size_t i = 0; i < max_threads; i++) {
+  for (size_t i = 0; i < server_data->max_threads; i++) {
     if (pthread_create(&threads[i], NULL, get_file, (void*)&thread_data) != 0) {
       fprintf(stderr, "Failed to create thread %zu\n", i);
       pthread_mutex_destroy(&thread_data.directory_mutex);
@@ -255,7 +252,7 @@ void dispatch_threads(DIR* dir) {
 
   // ler do FIFO de registo
 
-  for (unsigned int i = 0; i < max_threads; i++) {
+  for (unsigned int i = 0; i < server_data->max_threads; i++) {
     if (pthread_join(threads[i], NULL) != 0) {
       fprintf(stderr, "Failed to join thread %u\n", i);
       pthread_mutex_destroy(&thread_data.directory_mutex);
