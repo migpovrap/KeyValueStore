@@ -26,10 +26,10 @@ void initialize_session_buffer() {
   pthread_mutex_init(&session_buffer.buffer_lock, NULL);
 }
 
-void create_request(ClientListenerData request) {
+void create_request(ClientListenerData* request) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_lock);
-  session_buffer.session_data[session_buffer.in] = request;
+  session_buffer.session_data[session_buffer.in] = *request;
   session_buffer.in = (session_buffer.in + 1) % MAX_SESSION_COUNT;
   pthread_mutex_unlock(&session_buffer.buffer_lock);
   sem_post(&session_buffer.full);
@@ -157,7 +157,7 @@ void* client_request_handler() {
 }
 
 void* connection_listener(void* args) {
-  extern atomic_bool connection_listener_alive;
+  extern atomic_bool terminate;
   char* server_pipe_path = (char*)args;
   int server_fifo_fd;
   
@@ -168,12 +168,12 @@ void* connection_listener(void* args) {
   }
 
   // Opens FIFO for reading.
-  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY)) == -1) {
+  if ((server_fifo_fd = open(server_pipe_path, O_RDONLY | O_NONBLOCK)) == -1) {
     fprintf(stderr, "Failed to open FIFO.\n");
     pthread_exit(NULL);
   }
 
-  while (atomic_load(&connection_listener_alive)) {
+  while (!atomic_load(&terminate)) {
     char buffer[MAX_STRING_SIZE];
     ssize_t bytes_read = read(server_fifo_fd, buffer, MAX_STRING_SIZE);
      if (bytes_read > 0) {
@@ -189,16 +189,12 @@ void* connection_listener(void* args) {
         char* resp_pipe_path = strtok(NULL, "|");
         char* notif_pipe_path = strtok(NULL, "|");
 
-        ClientListenerData* listener_data = malloc(sizeof(ClientListenerData));
-        if (listener_data == NULL) {
-          fprintf(stderr, "Failed to allocate memory for ClientListenerData.\n");
-          continue;
-        }
-        listener_data->req_pipe_path = req_pipe_path;
-        listener_data->resp_pipe_path = resp_pipe_path;
-        listener_data->notif_pipe_path = notif_pipe_path;
-        atomic_store(&listener_data->terminate, 1);
-        create_request(*listener_data);
+        ClientListenerData listener_data;
+        listener_data.req_pipe_path = req_pipe_path;
+        listener_data.resp_pipe_path = resp_pipe_path;
+        listener_data.notif_pipe_path = notif_pipe_path;
+        atomic_store(&listener_data.terminate, 1);
+        create_request(&listener_data);
 
       }
     }

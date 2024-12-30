@@ -6,12 +6,10 @@
 #include <stdatomic.h>
 
 typedef struct ClientListenerData {
-  pthread_t thread;
   atomic_bool terminate;
   char* req_pipe_path; 
   char* resp_pipe_path; 
   char* notif_pipe_path;
-  struct ClientListenerData* next; 
 } ClientListenerData;
 
 typedef struct {

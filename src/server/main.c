@@ -37,7 +37,7 @@ pthread_t* worker_threads;     // Array of client worker threads
 pthread_t sigusr1_manager;     // Thread to listen for sigusr1 in a signal safe manner
 pthread_t server_listener;     // Thread to listen for server connections
 
-atomic_bool connection_listener_alive = 1;
+atomic_bool terminate = 0;
 
 _Atomic int sigusr1_received = 0;
 _Atomic int sigint_received = 0;

@@ -5,7 +5,7 @@ extern _Atomic int sigint_received;
 extern pthread_t* worker_threads;
 extern pthread_t sigusr1_manager;
 extern pthread_t server_listener;
-extern atomic_bool connection_listener_alive;
+extern atomic_bool terminate;
 
 void handle_sigusr1() {
   atomic_store(&sigusr1_received, 1);
@@ -74,8 +74,8 @@ int setup_client_workers() {
 
 void cleanup_and_exit(int exit_code) {
   // Signal the connection manager thread to exit if it was created.
-  if (atomic_load(&connection_listener_alive)) {
-    atomic_store(&connection_listener_alive, 0);
+  if (atomic_load(&terminate)) {
+    atomic_store(&terminate, 1);
     pthread_join(server_listener, NULL);
   }
 
