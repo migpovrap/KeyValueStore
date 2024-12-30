@@ -1,6 +1,5 @@
 #include "api.h"
 #include "common/protocol.h"
-#include "server/io.h"
 
 /// Sends a message to the KVS server or the request pipe.
 /// @param opcode The operation code specifying the action to be performed.

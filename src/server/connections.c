@@ -29,7 +29,6 @@ void initialize_session_buffer() {
 }
 
 void create_request(ClientListenerData* request) {
-void create_request(ClientListenerData* request) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_mutex);
 
