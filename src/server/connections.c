@@ -41,10 +41,12 @@ void create_request(ClientListenerData* request) {
   sem_post(&session_buffer.full);
 }
 
-void send_client_response (int resp_fifo_fd, enum OperationCode op_code, int error_code) {
+void send_client_response (int resp_fifo_fd,
+enum OperationCode op_code, int error_code) {
   char response[SERVER_RESPONSE_SIZE] = {op_code, (char)error_code};
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
-    write_str(STDERR_FILENO, "Failed to write to the client's response FIFO.\n");
+    write_str(STDERR_FILENO,
+    "Failed to write to the client's response FIFO.\n");
   }
 }
 
@@ -116,11 +118,13 @@ void handle_client_request(ClientListenerData request) {
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
-          handle_client_subscriptions(resp_fifo_fd, notif_fifo_fd, key, OP_CODE_SUBSCRIBE);
+          handle_client_subscriptions(resp_fifo_fd,
+          notif_fifo_fd, key, OP_CODE_SUBSCRIBE);
           break;
         case OP_CODE_UNSUBSCRIBE:
           key = strtok(NULL, "|");
-          handle_client_subscriptions(resp_fifo_fd, -1, key, OP_CODE_UNSUBSCRIBE);
+          handle_client_subscriptions(resp_fifo_fd, -1,
+          key, OP_CODE_UNSUBSCRIBE);
           break;
         case OP_CODE_DISCONNECT:
           handle_client_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
