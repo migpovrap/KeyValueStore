@@ -57,6 +57,8 @@ int main(int argc, char* argv[]) {
     unsigned int delay_ms;
     size_t num;
 
+    check_terminate_signal();
+    
     switch (get_next(STDIN_FILENO)) {
       case CMD_DISCONNECT:
         if (kvs_disconnect(client_data) != 0) {

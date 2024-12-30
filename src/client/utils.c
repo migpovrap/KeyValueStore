@@ -1,9 +1,12 @@
 #include <errno.h>
+#include <stdatomic.h>
 
 #include "api.h"
 #include "utils.h"
 
 extern ClientData* client_data;
+volatile sig_atomic_t terminate_flag = 0;
+
 
 void initialize_client_data(char* client_id) {
   client_data->req_fifo_fd = -1;
@@ -35,13 +38,19 @@ void cleanup_fifos() {
 
 // Signal handler for SIGINT and SIGTERM
 void signal_handler() {
-  if (client_data) {
-    client_data->terminate = 1;
-    pthread_cancel(client_data->notif_thread);
-    pthread_join(client_data->notif_thread, NULL);
+  terminate_flag = 1;
+}
+
+void check_terminate_signal() {
+  if (terminate_flag) {
+    if (client_data) {
+      client_data->terminate = 1;
+      pthread_cancel(client_data->notif_thread);
+      pthread_join(client_data->notif_thread, NULL);
+    }
+    cleanup_fifos();
+    _exit(0);
   }
-  cleanup_fifos();
-  _exit(0);
 }
 
 void setup_signal_handling() {
@@ -50,7 +59,7 @@ void setup_signal_handling() {
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL); 
 }
 
 int create_fifos() {

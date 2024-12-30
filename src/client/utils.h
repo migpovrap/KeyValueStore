@@ -16,7 +16,7 @@ typedef struct ClientData {
   int notif_fifo_fd;
   pthread_t notif_thread;
   int client_subs;
-  volatile sig_atomic_t terminate;
+    volatile sig_atomic_t terminate;
 } ClientData;
 
 /// Initialize client data with the given client id
@@ -41,4 +41,6 @@ void* notification_listener();
 /// Clean up and exit the program with the given exit code
 void cleanup_and_exit(int exit_code);
 
+/// Checks for the SIGINT and SIGTERM signals
+void check_terminate_signal();
 #endif // UTILS_H
