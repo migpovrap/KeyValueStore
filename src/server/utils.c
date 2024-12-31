@@ -1,4 +1,5 @@
 #include "server/utils.h"
+#include "connections.h"
 
 #include <signal.h>
 
@@ -103,6 +104,7 @@ void cleanup_and_exit(int exit_code) {
       }
       // Free the worker threads array.
       free(server_data->worker_threads);
+      cleanup_session_buffer();
     }
 
     // Destroy mutexes

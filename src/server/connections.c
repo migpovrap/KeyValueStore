@@ -44,7 +44,6 @@ void cleanup_client_data(ClientData* client_data) {
     free(client_data->resp_pipe_path);
     free(client_data->notif_pipe_path);
     free(client_data);
-    client_data = NULL;
   }
 }
 
@@ -185,12 +184,14 @@ void* client_request_handler() {
     pthread_mutex_lock(&session_buffer.buffer_mutex);
 
     ClientData* client_data = session_buffer.session_data[session_buffer.out];
+    int buffer_position = session_buffer.out;
     session_buffer.out = (session_buffer.out + 1) % MAX_SESSION_COUNT;
 
     pthread_mutex_unlock(&session_buffer.buffer_mutex);
     sem_post(&session_buffer.empty);
 
     handle_client_request(client_data);
+    session_buffer.session_data[buffer_position] = NULL;
     cleanup_client_data(client_data);
   }
   return NULL;
@@ -251,6 +252,5 @@ void* connection_manager(void* args) {
   unlink(server_pipe_path);
   clear_all_subscriptions();
   disconnect_all_clients();
-  cleanup_session_buffer();
   pthread_exit(NULL);
 }
