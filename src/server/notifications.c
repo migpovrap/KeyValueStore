@@ -111,5 +111,4 @@ void clear_all_subscriptions() {
   server_data->all_subscriptions.subscription_data = NULL;
 
   pthread_mutex_unlock(&server_data->all_subscriptions.mutex);
-  pthread_mutex_destroy(&server_data->all_subscriptions.mutex);
 }
