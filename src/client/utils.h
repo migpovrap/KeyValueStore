@@ -5,8 +5,9 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 #include "common/constants.h"
@@ -45,9 +46,5 @@ int create_fifos();
 
 /// Function assigned to the notification thread.
 void* notification_listener();
-
-/// Clean up and exit the program with the given exit code
-/// @param exit_code The program's exit code (0 or 1).
-void cleanup_and_exit(int exit_code);
 
 #endif // UTILS_H

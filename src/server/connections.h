@@ -6,15 +6,15 @@
 
 #include "common/constants.h"
 
-typedef struct ClientListenerData {
-  atomic_bool terminate_client;
+typedef struct ClientData {
+  atomic_bool terminate;
   char* req_pipe_path; 
   char* resp_pipe_path; 
   char* notif_pipe_path;
-} ClientListenerData;
+} ClientData;
 
 typedef struct {
-  ClientListenerData session_data[MAX_SESSION_COUNT];
+  ClientData session_data[MAX_SESSION_COUNT];
   int in;
   int out;
   sem_t full;

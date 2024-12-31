@@ -30,7 +30,7 @@ void initialize_session_buffer() {
   pthread_mutex_init(&session_buffer.buffer_mutex, NULL);
 }
 
-void create_request(ClientListenerData* request) {
+void create_request(ClientData* request) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_mutex);
 
@@ -41,7 +41,7 @@ void create_request(ClientListenerData* request) {
   sem_post(&session_buffer.full);
 }
 
-void send_client_response (int resp_fifo_fd,
+void send_message (int resp_fifo_fd,
 enum OperationCode op_code, int error_code) {
   char response[SERVER_RESPONSE_SIZE] = {op_code, (char)error_code};
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
@@ -55,7 +55,7 @@ void disconnect_all_clients() {
 
   // Iterate through the buffer and set the terminate flag for all clients.
   for (int i = 0; i < MAX_SESSION_COUNT; ++i)
-    atomic_store(&session_buffer.session_data[i].terminate_client, 0);
+    atomic_store(&session_buffer.session_data[i].terminate, 0);
 
   // Clean up the buffer.
   session_buffer.in = 0;
@@ -79,21 +79,21 @@ char* key, enum OperationCode op_code) {
   } else {
     result = 1; // If the key is NULL an error ocurred.
   }
-  send_client_response(resp_fifo_fd, op_code, result);
+  send_message(resp_fifo_fd, op_code, result);
 }
 
 void handle_client_disconnect(int resp_fifo_fd, int req_fifo_fd,
 int notif_fifo_fd) {
   remove_client(notif_fifo_fd);
 
-  send_client_response(resp_fifo_fd, OP_CODE_DISCONNECT, 0);
+  send_message(resp_fifo_fd, OP_CODE_DISCONNECT, 0);
   
   close(req_fifo_fd);
   close(resp_fifo_fd);
   close(notif_fifo_fd);
 }
 
-void handle_client_request(ClientListenerData request) {
+void handle_client_request(ClientData request) {
   int req_fifo_fd = open(request.req_pipe_path, O_RDONLY | O_NONBLOCK);
   int resp_fifo_fd = open(request.resp_pipe_path, O_WRONLY);
   int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
@@ -103,10 +103,10 @@ void handle_client_request(ClientListenerData request) {
     return;
   }
 
-  send_client_response(resp_fifo_fd, OP_CODE_CONNECT, 0);
+  send_message(resp_fifo_fd, OP_CODE_CONNECT, 0);
   
   char buffer[MAX_STRING_SIZE];
-  while (atomic_load(&request.terminate_client)) {
+  while (atomic_load(&request.terminate)) {
     ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
@@ -134,7 +134,7 @@ void handle_client_request(ClientListenerData request) {
           break;
         default:
           fprintf(stderr, "Unknown operation code: %d\n", op_code);
-          send_client_response(resp_fifo_fd, op_code, 1);
+          send_message(resp_fifo_fd, op_code, 1);
           break;
       }
     }
@@ -152,7 +152,7 @@ void* client_request_handler() {
     sem_wait(&session_buffer.full);
     pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-    ClientListenerData request =
+    ClientData request =
     session_buffer.session_data[session_buffer.out];
     session_buffer.out = (session_buffer.out + 1) % MAX_SESSION_COUNT;
 
@@ -197,11 +197,11 @@ void* connection_manager(void* args) {
         char* resp_pipe_path = strtok(NULL, "|");
         char* notif_pipe_path = strtok(NULL, "|");
 
-        ClientListenerData listener_data;
+        ClientData listener_data;
         listener_data.req_pipe_path = req_pipe_path;
         listener_data.resp_pipe_path = resp_pipe_path;
         listener_data.notif_pipe_path = notif_pipe_path;
-        atomic_store(&listener_data.terminate_client, 1);
+        atomic_store(&listener_data.terminate, 1);
         create_request(&listener_data);
 
       }

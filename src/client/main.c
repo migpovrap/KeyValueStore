@@ -1,9 +1,7 @@
-#include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #include "client/api.h"
 #include "client/utils.h"
@@ -18,34 +16,31 @@ int main(int argc, char* argv[]) {
     argv[0]);
     return 1;
   }
-  
-  client_data = malloc(sizeof(ClientData));
+
+  client_data = calloc(1, sizeof(ClientData));
   if (!client_data) {
     fprintf(stderr, "Failed to allocate memory for client data.\n");
     return 1;
   }
 
+  // Call cleanup at normal program exit.
+  atexit(cleanup);
+
   initialize_client_data(argv[1]);
 
   setup_signal_handling();
 
-  if (create_fifos() != 0)
-    cleanup_and_exit(1);
-
-  // Call FIFO cleanup at normal program exit
-  atexit(cleanup);
-
-  // Connect to the server
+  // Connect to the server.
   if (kvs_connect(client_data, argv[2]) != 0) {
     fprintf(stderr, "Failed to connect to the KVS server.\n");
-    cleanup_and_exit(1);
+    exit(1);
   }
 
   // Create a thread for notifications.
   if (pthread_create(&client_data->notif_thread, NULL, notification_listener,
   NULL) != 0) {
     fprintf(stderr, "Error creating notification thread.\n");
-    cleanup_and_exit(1);
+    exit(1);
   }
 
   while (!atomic_load(&client_data->terminate)) {
@@ -59,10 +54,10 @@ int main(int argc, char* argv[]) {
       case CMD_DISCONNECT:
         if (kvs_disconnect(client_data) != 0) {
           fprintf(stderr, "Failed to disconnect from the server.\n");
-          cleanup_and_exit(1);
+          exit(1);
         }
         printf("Disconnected from server.\n");
-        cleanup_and_exit(0);
+        exit(0);
         break;
 
       case CMD_SUBSCRIBE:

@@ -1,23 +1,18 @@
 #ifndef CLIENT_API_H
 #define CLIENT_API_H
 
-#include <fcntl.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stddef.h>
+#include <fcntl.h> 
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "client/utils.h"
 #include "common/constants.h"
-
+#include "common/protocol.h"
 
 /// Connects to a KVS server.
 /// @param client_data Pointer to a struct holding client-specific information.
-/// @param server_pipe_path Path to the named pipe for the server.
+/// @param registration_pipe_path Path to the named pipe for the server.
 /// @return 0 if the connection was established successfully, 1 otherwise.
-int kvs_connect(ClientData* client_data, const char* server_pipe_path);
+int kvs_connect(ClientData* client_data, const char* registration_pipe_path);
 
 /// Disconnects from a KVS server.
 /// @param client_data Pointer to a struct holding client-specific information.

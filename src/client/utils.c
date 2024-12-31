@@ -1,4 +1,3 @@
-#include "api.h"
 #include "client/utils.h"
 
 extern ClientData* client_data;
@@ -13,22 +12,28 @@ void initialize_client_data(char* client_id) {
   client_data->req_fifo_fd = -1;
   client_data->resp_fifo_fd = -1;
   client_data->notif_fifo_fd = -1;
-  client_data->client_subs = 0;
-  client_data->terminate = 0;
 }
 
-// Function to unlink FIFOs and close file descriptors
+/* Cancel notification thread, unlink FIFOs,
+ close file descriptors and free struct. */
 void cleanup() {
-  pthread_cancel(client_data->notif_thread);
-  pthread_join(client_data->notif_thread, NULL);
   if (client_data) {
+    if (client_data->notif_thread != 0) {
+      pthread_cancel(client_data->notif_thread);
+      pthread_join(client_data->notif_thread, NULL);
+    }
+
     if (client_data->req_fifo_fd != -1) close(client_data->req_fifo_fd);
     if (client_data->resp_fifo_fd != -1) close(client_data->resp_fifo_fd);
     if (client_data->notif_fifo_fd != -1) close(client_data->notif_fifo_fd);
 
-    unlink(client_data->req_pipe_path);
-    unlink(client_data->resp_pipe_path);
-    unlink(client_data->notif_pipe_path);
+    // Unlink FIFOs only if they were created.
+    if (access(client_data->req_pipe_path, F_OK) == 0)
+      unlink(client_data->req_pipe_path);
+    if (access(client_data->resp_pipe_path, F_OK) == 0)
+      unlink(client_data->resp_pipe_path);
+    if (access(client_data->notif_pipe_path, F_OK) == 0)
+      unlink(client_data->notif_pipe_path);
 
     free(client_data);
     client_data = NULL;
@@ -52,7 +57,7 @@ void setup_signal_handling() {
 
 void check_terminate_signal() {
   if (client_data && atomic_load(&client_data->terminate)) {
-    cleanup_and_exit(0);
+    exit(0);
   }
 }
 
@@ -81,7 +86,15 @@ void* notification_listener() {
     if (notif_fifo_fd == -1) break;
 
     int bytes_read = read_string(notif_fifo_fd, buffer);
-    if (bytes_read == -1) {
+    
+    if (bytes_read > 0) {
+      buffer[bytes_read] = '\0';
+      printf("Notification: %s\n", buffer);
+    } else if (bytes_read == 0) {
+      fprintf(stderr, "Notification pipe closed by server.\n");
+      kill(getpid(), SIGINT);
+      pthread_exit(NULL);
+    } else if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         sleep(1);
         continue;
@@ -90,21 +103,6 @@ void* notification_listener() {
         break;
       }
     }
-    if (bytes_read == 0) {
-      fprintf(stderr, "Notification pipe closed by server.\n");
-      kill(getpid(), SIGINT);
-      pthread_exit(NULL);
-    }
-    if (bytes_read > 0) {
-      buffer[bytes_read] = '\0';
-      printf("Notification: %s\n", buffer);
-    }
   }
   return NULL;
-}
-
-void cleanup_and_exit(int exit_code) {
-  client_data->terminate = 1;
-  cleanup();
-  _exit(exit_code);
 }

@@ -2,6 +2,7 @@
 #define KVS_PARSER_H
 
 #include <stddef.h>
+#include <string.h>
 
 #include "common/constants.h"
 
