@@ -48,9 +48,9 @@ void* sigusr1_handler_manager();
 void setup_signal_handling();
 
 /// Setup server FIFO listener thread.
-/// @param server_fifo_path The path to the server FIFO.
+/// @param register_fifo_path The path to the server register FIFO.
 /// @return int Returns 0 on success, or a negative error code on failure.
-int setup_server_fifo(char* server_fifo_path);
+int setup_register_fifo(char* register_fifo_path);
 
 /// Setup client worker threads.
 /// @return int Returns 0 on success, or a negative error code on failure.

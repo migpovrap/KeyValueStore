@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
 
   setup_signal_handling();
 
-  setup_server_fifo(argv[4]);
+  setup_register_fifo(argv[4]);
   
   dispatch_threads(dir);
 

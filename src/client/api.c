@@ -89,8 +89,11 @@ int kvs_connect(ClientData* client_data, const char* registration_pipe_path) {
   int server_response = check_server_response(&client_data->resp_fifo_fd);
   printf("Server returned %d for operation: connect.\n", server_response);
 
-  if (server_response != 0)
+  if (server_response != 0) {
+    if (server_response == 3)
+      fprintf(stderr, "Another client with the same id is already connected. Please use a different id.\n");
     return 1;
+  }
 
   return 0;
 }
@@ -110,8 +113,7 @@ int kvs_disconnect(ClientData* client_data) {
 int kvs_subscribe(ClientData* client_data, const char* key) {
   // Check if max number of subscriptions has been reached.
   if (client_data->client_subs >= MAX_NUMBER_SUB) {
-    fprintf(stderr, "Max number of subscriptions reached. \
-    Please unsubscribe from a key before subscribing to another.\n");
+    fprintf(stderr, "Max number of subscriptions reached. Please unsubscribe from a key before subscribing to another.\n");
     return 0;
   }
 

@@ -18,8 +18,7 @@ int add_subscription(const char* key, int notification_fifo_fd) {
 
   SubscriptionData* new_sub = malloc(sizeof(SubscriptionData));
   if (new_sub == NULL) {
-    write_str(STDERR_FILENO, "Failed to allocate memory for\
-    subscrpition data.\n");
+    write_str(STDERR_FILENO, "Failed to allocate memory for subscrpition data.\n");
     return 1;
   }
 

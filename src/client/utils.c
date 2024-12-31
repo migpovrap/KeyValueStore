@@ -12,6 +12,7 @@ void initialize_client_data(char* client_id) {
   client_data->req_fifo_fd = -1;
   client_data->resp_fifo_fd = -1;
   client_data->notif_fifo_fd = -1;
+  client_data->notif_thread = 0;
 }
 
 /* Cancel notification thread, unlink FIFOs,

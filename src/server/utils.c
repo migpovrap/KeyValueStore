@@ -72,9 +72,9 @@ void setup_signal_handling() {
   sigusr1_handler_manager, NULL);
 }
 
-int setup_server_fifo(char* server_fifo_path) {
+int setup_register_fifo(char* register_fifo_path) {
   if (pthread_create(&server_data->connection_manager, NULL,
-  connection_manager, server_fifo_path) != 0) {
+  connection_manager, register_fifo_path) != 0) {
     write_str(STDERR_FILENO, "Failed to create connection manager thread.\n");
     return 1;
   }

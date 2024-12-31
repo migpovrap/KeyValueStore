@@ -65,12 +65,12 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         num_pairs = parse_write(in_fd, keys, values, MAX_WRITE_SIZE,
         MAX_STRING_SIZE);
         if (num_pairs == 0) {
-          write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
+          write_str(STDERR_FILENO, "Invalid command. See HELP for usage.\n");
           continue;
         }
 
         if (kvs_write(num_pairs, keys, values)) {
-          write_str(STDERR_FILENO, "Failed to write pair\n");
+          write_str(STDERR_FILENO, "Failed to write pair.\n");
         }
         break;
 
@@ -79,12 +79,12 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
-          write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
+          write_str(STDERR_FILENO, "Invalid command. See HELP for usage.\n");
           continue;
         }
 
         if (kvs_read(num_pairs, keys, out_fd)) {
-          write_str(STDERR_FILENO, "Failed to read pair\n");
+          write_str(STDERR_FILENO, "Failed to read pair.\n");
         }
         break;
 
@@ -93,12 +93,12 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
-          write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
+          write_str(STDERR_FILENO, "Invalid command. See HELP for usage.\n");
           continue;
         }
 
         if (kvs_delete(num_pairs, keys, out_fd)) {
-          write_str(STDERR_FILENO, "Failed to delete pair\n");
+          write_str(STDERR_FILENO, "Failed to delete pair.\n");
         }
         break;
 
@@ -108,12 +108,12 @@ static int run_job(int in_fd, int out_fd, char* filename) {
 
       case CMD_WAIT:
         if (parse_wait(in_fd, &delay, NULL) == -1) {
-          write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
+          write_str(STDERR_FILENO, "Invalid command. See HELP for usage.\n");
           continue;
         }
 
         if (delay > 0) {
-          printf("Waiting %d seconds\n", delay / 1000);
+          printf("Waiting %d seconds.\n", delay / 1000);
           kvs_wait(delay);
         }
         break;
@@ -130,14 +130,14 @@ static int run_job(int in_fd, int out_fd, char* filename) {
         server_data->jobs_directory);
 
         if (aux < 0) {
-            write_str(STDERR_FILENO, "Failed to do backup\n");
+            write_str(STDERR_FILENO, "Failed to do backup.\n");
         } else if (aux == 1) {
           return 1;
         }
         break;
 
       case CMD_INVALID:
-        write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
+        write_str(STDERR_FILENO, "Invalid command. See HELP for usage.\n");
         break;
 
       case CMD_HELP:
@@ -169,7 +169,7 @@ static void* get_file(void* arguments) {
   char* dir_name = thread_data->dir_name;
 
   if (pthread_mutex_lock(&thread_data->directory_mutex) != 0) {
-    write_str(STDERR_FILENO, "Thread failed to lock directory_mutex\n");
+    write_str(STDERR_FILENO, "Thread failed to lock directory_mutex.\n");
     return NULL;
   }
 
@@ -181,7 +181,7 @@ static void* get_file(void* arguments) {
     }
 
     if (pthread_mutex_unlock(&thread_data->directory_mutex) != 0) {
-      write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex\n");
+      write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex.\n");
       return NULL;
     }
 
@@ -208,7 +208,7 @@ static void* get_file(void* arguments) {
 
     if (out) {
       if (closedir(dir) == -1) {
-        write_str(STDERR_FILENO, "Failed to close directory\n");
+        write_str(STDERR_FILENO, "Failed to close directory.\n");
         return 0;
       }
 
@@ -216,13 +216,13 @@ static void* get_file(void* arguments) {
     }
 
     if (pthread_mutex_lock(&thread_data->directory_mutex) != 0) {
-      write_str(STDERR_FILENO, "Thread failed to lock directory_mutex\n");
+      write_str(STDERR_FILENO, "Thread failed to lock directory_mutex.\n");
       return NULL;
     }
   }
 
   if (pthread_mutex_unlock(&thread_data->directory_mutex) != 0) {
-    write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex\n");
+    write_str(STDERR_FILENO, "Thread failed to unlock directory_mutex.\n");
     return NULL;
   }
 
@@ -233,7 +233,7 @@ void dispatch_threads(DIR* dir) {
   pthread_t* threads = malloc(server_data->max_threads * sizeof(pthread_t));
 
   if (threads == NULL) {
-    write_str(STDERR_FILENO, "Failed to allocate memory for threads\n");
+    write_str(STDERR_FILENO, "Failed to allocate memory for threads.\n");
     return;
   }
 
@@ -243,7 +243,7 @@ void dispatch_threads(DIR* dir) {
 
   for (size_t i = 0; i < server_data->max_threads; i++) {
     if (pthread_create(&threads[i], NULL, get_file, (void*)&thread_data) != 0) {
-      fprintf(stderr, "Failed to create thread %zu\n", i);
+      fprintf(stderr, "Failed to create thread %zu.\n", i);
       pthread_mutex_destroy(&thread_data.directory_mutex);
       free(threads);
       return;
@@ -254,7 +254,7 @@ void dispatch_threads(DIR* dir) {
 
   for (unsigned int i = 0; i < server_data->max_threads; i++) {
     if (pthread_join(threads[i], NULL) != 0) {
-      fprintf(stderr, "Failed to join thread %u\n", i);
+      fprintf(stderr, "Failed to join thread %u.\n", i);
       pthread_mutex_destroy(&thread_data.directory_mutex);
       free(threads);
       return;
@@ -262,7 +262,7 @@ void dispatch_threads(DIR* dir) {
   }
 
   if (pthread_mutex_destroy(&thread_data.directory_mutex) != 0) {
-    write_str(STDERR_FILENO, "Failed to destroy directory_mutex\n");
+    write_str(STDERR_FILENO, "Failed to destroy directory_mutex.\n");
   }
 
   free(threads);

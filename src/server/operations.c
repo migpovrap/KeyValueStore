@@ -53,7 +53,7 @@ char values[][MAX_STRING_SIZE]) {
 
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
-      fprintf(stderr, "Failed to write key pair (%s,%s)\n", keys[i], values[i]);
+      fprintf(stderr, "Failed to write key pair (%s,%s).\n", keys[i], values[i]);
     }
     notify_subscribers(keys[i], values[i]);
   }
