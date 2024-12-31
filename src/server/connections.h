@@ -29,6 +29,7 @@ void* connection_manager(void* args);
 
 /// Initializes the session buffer.
 void initialize_session_buffer();
+
 /// Cleanup the session buffer.
 void cleanup_session_buffer();
 
