@@ -29,6 +29,7 @@ char* max_threads, char* max_backups) {
   server_data->all_subscriptions.subscription_data = NULL;
   server_data->active_backups = 0;
   server_data->jobs_directory = job_path;
+  server_data->sigusr1_received = 0;
   server_data->terminate = 0;
 }
 
@@ -104,6 +105,9 @@ void cleanup_and_exit(int exit_code) {
   }
 
   kvs_terminate();
+  pthread_mutex_destroy(&server_data->backups_mutex);
+  pthread_mutex_destroy(&server_data->all_subscriptions.mutex);
+  free(server_data);
 
   _exit(exit_code);
 }
