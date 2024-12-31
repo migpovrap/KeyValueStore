@@ -1,21 +1,14 @@
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <fcntl.h>
-#include <semaphore.h>
-#include <stdatomic.h>
+#include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include "common/constants.h"
 #include "common/protocol.h"
 #include "connections.h"
-#include "notifications.h"
 #include "server/io.h"
 #include "server/utils.h"
 
@@ -28,7 +21,7 @@ void initialize_session_buffer() {
   session_buffer.session_data = malloc(MAX_SESSION_COUNT * sizeof(ClientData));
   if (session_buffer.session_data == NULL) {
     write_str(STDERR_FILENO, "Failed to allocate memory for session_data.\n");
-    exit(1); // TODO REFACTOR ATEXIT LOGIC
+    exit(1);
   }
   for (int i = 0; i < MAX_SESSION_COUNT; ++i) {
     session_buffer.session_data[i] = NULL;

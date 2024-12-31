@@ -2,8 +2,10 @@
 #define KEY_VALUE_STORE_H
 #define TABLE_SIZE 26
 
-#include <stddef.h>
+#include <ctype.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct KeyNode {
     char *key;

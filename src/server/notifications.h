@@ -2,8 +2,12 @@
 #define NOTIFICATIONS_H
 
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "common/constants.h"
+#include "server/io.h"
 
 typedef struct SubscriptionData {
   char key[MAX_STRING_SIZE];
@@ -37,4 +41,4 @@ void notify_subscribers(const char* key, const char* value);
 /// Clears all subscriptions.
 void clear_all_subscriptions();
 
-#endif
+#endif // NOTIFICATIONS_H

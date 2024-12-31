@@ -1,7 +1,4 @@
 #include "server/utils.h"
-#include "connections.h"
-
-#include <signal.h>
 
 extern ServerData* server_data;
 

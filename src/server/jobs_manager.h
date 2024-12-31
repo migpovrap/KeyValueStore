@@ -2,7 +2,7 @@
 #define JOBS_MANAGER_H
 
 #include <dirent.h>
-#include <fcntl.h>
+#include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
 

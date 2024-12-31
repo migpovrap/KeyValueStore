@@ -1,14 +1,13 @@
 #ifndef SERVER_UTILS_H
 #define SERVER_UTILS_H
 
-#include <signal.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <semaphore.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdlib.h>
+#include <unistd.h>
 
+#include "common/constants.h"
 #include "connections.h"
 #include "notifications.h"
 #include "operations.h"

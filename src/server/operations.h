@@ -1,9 +1,17 @@
 #ifndef OPERATIONS_H
 #define OPERATIONS_H
 
+#include <fcntl.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "constants.h"
+#include "io.h"
+#include "kvs.h"
+#include "notifications.h"
 
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.

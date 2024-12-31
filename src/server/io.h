@@ -1,6 +1,8 @@
 #ifndef SERVER_IO_H
 #define SERVER_IO_H
 
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 /// Writes a string to the given file descriptor.

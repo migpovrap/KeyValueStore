@@ -1,31 +1,21 @@
-#include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
-#include <stdatomic.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <signal.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
-#include "common/protocol.h"
 #include "constants.h"
-#include "io.h"
 #include "jobs_manager.h"
 #include "operations.h"
 #include "parser.h"
+#include "server/io.h"
 #include "server/utils.h"
 
 extern ServerData* server_data;
 
 int filter_job_files(const struct dirent* entry) {
   const char* dot = strrchr(entry->d_name, '.');
-  if (dot != NULL && strcmp(dot, ".job") == 0) {
+  if (dot != NULL && strcmp(dot, ".job") == 0)
     return 1;  // Keep this file (it has the .job extension)
-  }
   return 0;
 }
 

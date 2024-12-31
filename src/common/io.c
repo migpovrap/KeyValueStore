@@ -1,13 +1,4 @@
 #include "io.h"
-#include <errno.h>
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include "common/constants.h"
- 
  
 int read_all(int fd, void *buffer, size_t size, int *intr) {
   if (intr != NULL && *intr) {
@@ -81,12 +72,12 @@ int write_all(int fd, const void *buffer, size_t size) {
 }
 
 static struct timespec delay_to_timespec(unsigned int delay_ms) {
-    return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
+  return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
 
 void delay(unsigned int time_ms) {
-    struct timespec delay = delay_to_timespec(time_ms);
-    nanosleep(&delay, NULL);
+  struct timespec delay = delay_to_timespec(time_ms);
+  nanosleep(&delay, NULL);
 }
 
 

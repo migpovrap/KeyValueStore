@@ -1,7 +1,16 @@
 #ifndef COMMON_IO_H
 #define COMMON_IO_H
 
+#include <errno.h>
+#include <limits.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "common/constants.h"
 
 /// Reads a given number of bytes from a file descriptor. Will block until all
 /// bytes are read, or fail if not all bytes could be read.
@@ -14,6 +23,10 @@
 /// on error, returns -1
 int read_all(int fd, void *buffer, size_t size, int *intr);
 
+/// Reads a string from a file descriptor.
+/// @param fd The file descriptor to read from.
+/// @param str The buffer to store the read string.
+/// @return The number of bytes read, or -1 on error.
 int read_string(int fd, char *str);
 
 /// Writes a given number of bytes to a file descriptor. Will block until all

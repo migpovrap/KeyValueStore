@@ -2,7 +2,9 @@
 #define CONNECTIONS_H
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 
 #include "common/constants.h"
 

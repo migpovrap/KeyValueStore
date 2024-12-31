@@ -1,27 +1,11 @@
-#include <unistd.h>
 #include <dirent.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 #include <stdio.h>
-#include <errno.h>
-#include <stdatomic.h>
-#include <semaphore.h>
-#include <pthread.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#include "constants.h"
-#include "common/protocol.h"
-#include "parser.h"
-#include "operations.h"
-#include "io.h"
-#include "notifications.h"
-#include "connections.h"
 #include "jobs_manager.h"
+#include "server/io.h"
 #include "server/utils.h"
 
 ServerData* server_data;

@@ -1,9 +1,7 @@
 #include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-#include "io.h"
 #include "parser.h"
 
 /// Reads a string and indicates the position from where it was

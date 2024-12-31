@@ -14,7 +14,7 @@ SERVER_SRC = server
 CLIENT_SRC = client
 COMMON_SRC = common
 TEST_SRC = tests
-PIPE = ./teste.pipe
+PIPE = ./test.pipe
 
 SERVER_OBJS = $(SERVER_SRC)/operations.o $(SERVER_SRC)/kvs.o $(SERVER_SRC)/io.o $(SERVER_SRC)/parser.o $(COMMON_SRC)/io.o $(SERVER_SRC)/notifications.o $(SERVER_SRC)/connections.o $(SERVER_SRC)/jobs_manager.o $(SERVER_SRC)/utils.o
 CLIENT_OBJS = $(CLIENT_SRC)/api.o $(CLIENT_SRC)/utils.o $(CLIENT_SRC)/parser.o $(COMMON_SRC)/io.o
