@@ -14,7 +14,7 @@ typedef struct ClientData {
 } ClientData;
 
 typedef struct {
-  ClientData* session_data;
+  ClientData** session_data;
   int in;
   int out;
   sem_t full;

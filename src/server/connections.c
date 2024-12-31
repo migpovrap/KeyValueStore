@@ -30,9 +30,22 @@ void initialize_session_buffer() {
     write_str(STDERR_FILENO, "Failed to allocate memory for session_data.\n");
     exit(1); // TODO REFACTOR ATEXIT LOGIC
   }
+  for (int i = 0; i < MAX_SESSION_COUNT; ++i) {
+    session_buffer.session_data[i] = NULL;
+  }
   sem_init(&session_buffer.full, 0, 0);
   sem_init(&session_buffer.empty, 0, MAX_SESSION_COUNT);
   pthread_mutex_init(&session_buffer.buffer_mutex, NULL);
+}
+
+void cleanup_client_data(ClientData* client_data) {
+  if ( client_data != NULL) {
+    free(client_data->req_pipe_path);
+    free(client_data->resp_pipe_path);
+    free(client_data->notif_pipe_path);
+    free(client_data);
+    client_data = NULL;
+  }
 }
 
 void cleanup_session_buffer() {
@@ -46,7 +59,7 @@ void create_request(ClientData* client_data) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-  session_buffer.session_data[session_buffer.in] = *client_data;
+  session_buffer.session_data[session_buffer.in] = client_data;
   session_buffer.in = (session_buffer.in + 1) % MAX_SESSION_COUNT;
   
   pthread_mutex_unlock(&session_buffer.buffer_mutex);
@@ -67,7 +80,8 @@ void disconnect_all_clients() {
 
   // Iterate through the buffer and set the terminate flag for all clients.
   for (int i = 0; i < MAX_SESSION_COUNT; ++i)
-    atomic_store(&session_buffer.session_data[i].terminate, 1);
+    if (session_buffer.session_data != NULL &&  session_buffer.session_data[i] != NULL)
+      atomic_store(&session_buffer.session_data[i]->terminate, 1);
 
   // Clean up the buffer.
   session_buffer.in = 0;
@@ -170,14 +184,14 @@ void* client_request_handler() {
     sem_wait(&session_buffer.full);
     pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-    ClientData* client_data =
-    &session_buffer.session_data[session_buffer.out];
+    ClientData* client_data = session_buffer.session_data[session_buffer.out];
     session_buffer.out = (session_buffer.out + 1) % MAX_SESSION_COUNT;
 
     pthread_mutex_unlock(&session_buffer.buffer_mutex);
     sem_post(&session_buffer.empty);
 
     handle_client_request(client_data);
+    cleanup_client_data(client_data);
   }
   return NULL;
 }
