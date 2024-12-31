@@ -56,9 +56,8 @@ void setup_signal_handling() {
 }
 
 void check_terminate_signal() {
-  if (client_data && atomic_load(&client_data->terminate)) {
+  if (client_data && atomic_load(&client_data->terminate))
     exit(0);
-  }
 }
 
 int create_fifos() {

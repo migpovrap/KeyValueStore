@@ -62,17 +62,18 @@ int kvs_connect(ClientData* client_data, const char* registration_pipe_path) {
     return 1;
   }
 
+  if (create_fifos() != 0) {
+    fprintf(stderr, "Error creating FIFOs.\n");
+    close(registration_fifo_fd);
+    return 1;
+  }
+
   if (send_message(OP_CODE_CONNECT, client_data, NULL, &registration_fifo_fd)) {
     close(registration_fifo_fd);
     return 1;
   }
 
   close(registration_fifo_fd);
-
-  if (create_fifos() != 0) {
-    fprintf(stderr, "Error creating FIFOs.\n");
-    return 1;
-  }
   
   client_data->req_fifo_fd = open(client_data->req_pipe_path, O_WRONLY);
   client_data->resp_fifo_fd = open(client_data->resp_pipe_path, O_RDONLY);
