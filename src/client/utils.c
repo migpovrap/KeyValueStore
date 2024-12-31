@@ -88,7 +88,7 @@ void* notification_listener() {
     
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
-      printf("Notification: %s\n", buffer);
+      printf("%s\n", buffer);
     } else if (bytes_read == 0) {
       fprintf(stderr, "Notification pipe closed by server.\n");
       kill(getpid(), SIGINT);

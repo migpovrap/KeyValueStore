@@ -92,3 +92,4 @@ test3: $(SERVER_SRC)/kvs $(CLIENT_SRC)/client
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i $(COMMON_SRC)/*.c $(COMMON_SRC)/*.h $(CLIENT_SRC)/*.c $(CLIENT_SRC)/*.h $(SERVER_SRC)/*.c $(SERVER_SRC)/*.h
+	
