@@ -164,6 +164,12 @@ static int run_job(int in_fd, int out_fd, char* filename) {
 }
 
 static void* get_file(void* arguments) {
+  // Blocks SIGUSR1 signal in the threads assigned to this function.
+  sigset_t blocked_signals;
+  sigemptyset(&blocked_signals);
+  sigaddset(&blocked_signals, SIGUSR1);
+  pthread_sigmask(SIG_BLOCK, &blocked_signals, NULL);
+
   SharedData* thread_data = (SharedData*) arguments;
   DIR* dir = thread_data->dir;
   char* dir_name = thread_data->dir_name;

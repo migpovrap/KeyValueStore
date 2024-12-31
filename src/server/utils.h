@@ -22,7 +22,6 @@ typedef struct ServerData {
   pthread_mutex_t backups_mutex;                    // Mutex to lock number of active backups.
   pthread_t connection_manager;                     // Thread to listen for client connections to the server.
   pthread_t* worker_threads;                        // Array of client worker threads.
-  pthread_t sigusr1_listener;                       // Thread to listen for sigusr1 in a signal safe manner.
   sig_atomic_t sigusr1_received;                    // Flag indicating SIGUSR1 signal was recieved.
   _Atomic volatile sig_atomic_t terminate;          // Flag indicating SIGINT or SIGTERM signal was recieved.
   ClientSubscriptions all_subscriptions;            // Linked list holding subscription data for all clients.
@@ -39,10 +38,6 @@ void handle_sigusr1();
 
 /// Signal handler for SIGINT.
 void handle_sigint();
-
-/// Thread function to manage SIGUSR1 signal handling.
-/// @return void* A pointer to the thread's return value.
-void* sigusr1_handler_manager();
 
 /// Setup signal handlers for SIGUSR1 and SIGINT.
 void setup_signal_handling();

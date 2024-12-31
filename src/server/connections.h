@@ -7,14 +7,14 @@
 #include "common/constants.h"
 
 typedef struct ClientData {
-  atomic_bool terminate;
+  volatile atomic_bool terminate;
   char* req_pipe_path; 
   char* resp_pipe_path; 
   char* notif_pipe_path;
 } ClientData;
 
 typedef struct {
-  ClientData session_data[MAX_SESSION_COUNT];
+  ClientData* session_data;
   int in;
   int out;
   sem_t full;

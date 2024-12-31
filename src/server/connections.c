@@ -25,16 +25,28 @@ RequestBuffer session_buffer;
 void initialize_session_buffer() {
   session_buffer.in = 0;
   session_buffer.out = 0;
+  session_buffer.session_data = malloc(MAX_SESSION_COUNT * sizeof(ClientData));
+  if (session_buffer.session_data == NULL) {
+    write_str(STDERR_FILENO, "Failed to allocate memory for session_data.\n");
+    exit(1); // TODO REFACTOR ATEXIT LOGIC
+  }
   sem_init(&session_buffer.full, 0, 0);
   sem_init(&session_buffer.empty, 0, MAX_SESSION_COUNT);
   pthread_mutex_init(&session_buffer.buffer_mutex, NULL);
 }
 
-void create_request(ClientData* request) {
+void cleanup_session_buffer() {
+  free(session_buffer.session_data);
+  sem_destroy(&session_buffer.full);
+  sem_destroy(&session_buffer.empty);
+  pthread_mutex_destroy(&session_buffer.buffer_mutex);
+}
+
+void create_request(ClientData* client_data) {
   sem_wait(&session_buffer.empty);
   pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-  session_buffer.session_data[session_buffer.in] = *request;
+  session_buffer.session_data[session_buffer.in] = *client_data;
   session_buffer.in = (session_buffer.in + 1) % MAX_SESSION_COUNT;
   
   pthread_mutex_unlock(&session_buffer.buffer_mutex);
@@ -43,7 +55,7 @@ void create_request(ClientData* request) {
 
 void send_message (int resp_fifo_fd,
 enum OperationCode op_code, int error_code) {
-  char response[SERVER_RESPONSE_SIZE] = {op_code, (char)error_code};
+  char response[SERVER_RESPONSE_SIZE] = {op_code, (char) error_code};
   if (write(resp_fifo_fd, response, SERVER_RESPONSE_SIZE) == -1) {
     write_str(STDERR_FILENO,
     "Failed to write to the client's response FIFO.\n");
@@ -55,7 +67,7 @@ void disconnect_all_clients() {
 
   // Iterate through the buffer and set the terminate flag for all clients.
   for (int i = 0; i < MAX_SESSION_COUNT; ++i)
-    atomic_store(&session_buffer.session_data[i].terminate, 0);
+    atomic_store(&session_buffer.session_data[i].terminate, 1);
 
   // Clean up the buffer.
   session_buffer.in = 0;
@@ -93,10 +105,10 @@ int notif_fifo_fd) {
   close(notif_fifo_fd);
 }
 
-void handle_client_request(ClientData request) {
-  int req_fifo_fd = open(request.req_pipe_path, O_RDONLY | O_NONBLOCK);
-  int resp_fifo_fd = open(request.resp_pipe_path, O_WRONLY);
-  int notif_fifo_fd = open(request.notif_pipe_path, O_WRONLY);
+void handle_client_request(ClientData* client_data) {
+  int req_fifo_fd = open(client_data->req_pipe_path, O_RDONLY | O_NONBLOCK);
+  int resp_fifo_fd = open(client_data->resp_pipe_path, O_WRONLY);
+  int notif_fifo_fd = open(client_data->notif_pipe_path, O_WRONLY);
 
   if (req_fifo_fd == -1 || resp_fifo_fd == -1 || notif_fifo_fd == -1) {
     write_str(STDERR_FILENO, "Failed to open the client FIFOs.\n");
@@ -106,7 +118,7 @@ void handle_client_request(ClientData request) {
   send_message(resp_fifo_fd, OP_CODE_CONNECT, 0);
   
   char buffer[MAX_STRING_SIZE];
-  while (atomic_load(&request.terminate)) {
+  while (!atomic_load(&client_data->terminate)) {
     ssize_t bytes_read = read(req_fifo_fd, buffer, MAX_STRING_SIZE);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
@@ -114,7 +126,6 @@ void handle_client_request(ClientData request) {
       char* key;
       int op_code_int = atoi(token);
       enum OperationCode op_code = (enum OperationCode)op_code_int;
-
       switch (op_code) {
         case OP_CODE_SUBSCRIBE:
           key = strtok(NULL, "|");
@@ -144,7 +155,14 @@ void handle_client_request(ClientData request) {
   close(notif_fifo_fd);
 }
 
+// Worker Threads Function
 void* client_request_handler() {
+  // Blocks SIGUSR1 signal in the threads assigned to this function.
+  sigset_t blocked_signals;
+  sigemptyset(&blocked_signals);
+  sigaddset(&blocked_signals, SIGUSR1);
+  pthread_sigmask(SIG_BLOCK, &blocked_signals, NULL);
+  
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -152,18 +170,19 @@ void* client_request_handler() {
     sem_wait(&session_buffer.full);
     pthread_mutex_lock(&session_buffer.buffer_mutex);
 
-    ClientData request =
-    session_buffer.session_data[session_buffer.out];
+    ClientData* client_data =
+    &session_buffer.session_data[session_buffer.out];
     session_buffer.out = (session_buffer.out + 1) % MAX_SESSION_COUNT;
 
     pthread_mutex_unlock(&session_buffer.buffer_mutex);
     sem_post(&session_buffer.empty);
 
-    handle_client_request(request);
+    handle_client_request(client_data);
   }
   return NULL;
 }
 
+// Thread Manager Function
 void* connection_manager(void* args) {
   char* server_pipe_path = (char*)args;
   
@@ -182,12 +201,19 @@ void* connection_manager(void* args) {
   }
 
   while (!atomic_load(&server_data->terminate)) {
+    // Check SIGUSR1.
+    if (server_data->sigusr1_received) {
+      clear_all_subscriptions();
+      disconnect_all_clients();
+      server_data->sigusr1_received = 0;
+    }
+    
     char buffer[MAX_STRING_SIZE];
     ssize_t bytes_read = read(server_fifo_fd, buffer, MAX_STRING_SIZE);
      if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
 
-      // Parse the client operation code request.
+      // Parse the client request operation code.
       char* token = strtok(buffer, "|");
       int op_code_int = atoi(token);
       enum OperationCode op_code = (enum OperationCode)op_code_int;
@@ -196,13 +222,13 @@ void* connection_manager(void* args) {
         char* req_pipe_path = strtok(NULL, "|");
         char* resp_pipe_path = strtok(NULL, "|");
         char* notif_pipe_path = strtok(NULL, "|");
-
-        ClientData listener_data;
-        listener_data.req_pipe_path = req_pipe_path;
-        listener_data.resp_pipe_path = resp_pipe_path;
-        listener_data.notif_pipe_path = notif_pipe_path;
-        atomic_store(&listener_data.terminate, 1);
-        create_request(&listener_data);
+        
+        ClientData* client_data = malloc(sizeof(ClientData));
+        client_data->req_pipe_path = strdup(req_pipe_path);
+        client_data->resp_pipe_path = strdup(resp_pipe_path);
+        client_data->notif_pipe_path = strdup(notif_pipe_path);
+        atomic_store(&client_data->terminate, 0);
+        create_request(client_data);
 
       }
     }
@@ -211,5 +237,6 @@ void* connection_manager(void* args) {
   unlink(server_pipe_path);
   clear_all_subscriptions();
   disconnect_all_clients();
+  cleanup_session_buffer();
   pthread_exit(NULL);
 }

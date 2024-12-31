@@ -30,7 +30,6 @@ char* max_threads, char* max_backups) {
   server_data->active_backups = 0;
   server_data->jobs_directory = job_path;
   server_data->terminate = 0;
-  server_data->sigusr1_received = 0;
 }
 
 void handle_sigusr1() {
@@ -41,17 +40,6 @@ void handle_sigint() {
   server_data->terminate = 1;
 }
 
-// Thread Function
-void* sigusr1_handler_manager() {
-  while (!server_data->sigusr1_received) {
-    sleep(1); // Small sleep between checks to avoid busy-waiting.
-  }
-  clear_all_subscriptions();
-  disconnect_all_clients();
-  server_data->sigusr1_received = 0;
-  return NULL;
-}
-
 void setup_signal_handling() {
   // SIGUSR1
   struct sigaction sa_usr1;
@@ -60,16 +48,13 @@ void setup_signal_handling() {
   sa_usr1.sa_flags = 0;
   sigaction(SIGUSR1, &sa_usr1, NULL);
 
-  // SIGINT
-  struct sigaction sa_int;
-  sa_int.sa_handler = handle_sigint;
-  sigemptyset(&sa_int.sa_mask);
-  sa_int.sa_flags = 0;
-  sigaction(SIGINT, &sa_int, NULL);
-
-  // Create a thread to listen for the SIGUSR1 signal.
-  pthread_create(&server_data->sigusr1_listener, NULL,
-  sigusr1_handler_manager, NULL);
+  // SIGINT & SIGTERM
+  struct sigaction sa;
+  sa.sa_handler = handle_sigint;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
 }
 
 int setup_register_fifo(char* register_fifo_path) {
@@ -120,9 +105,5 @@ void cleanup_and_exit(int exit_code) {
 
   kvs_terminate();
 
-  if (server_data->sigusr1_listener != 0) {
-    pthread_cancel(server_data->sigusr1_listener);
-    pthread_join(server_data->sigusr1_listener, NULL);
-  }
   _exit(exit_code);
 }
