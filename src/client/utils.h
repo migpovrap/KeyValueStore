@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef CLIENT_UTILS_H
+#define CLIENT_UTILS_H
 
 #include <errno.h>
 #include <pthread.h>
@@ -47,4 +47,4 @@ int create_fifos();
 /// Function assigned to the notification thread.
 void* notification_listener();
 
-#endif // UTILS_H
+#endif // CLIENT_UTILS_H

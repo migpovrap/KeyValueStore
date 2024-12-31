@@ -1,5 +1,5 @@
-#ifndef KVS_PARSER_H
-#define KVS_PARSER_H
+#ifndef CLIENT_PARSER_H
+#define CLIENT_PARSER_H
 
 #include <stddef.h>
 #include <string.h>
@@ -40,4 +40,4 @@ size_t max_keys, size_t max_string_size);
 /// -1 on error.
 int parse_delay(int fd, unsigned int *delay);
 
-#endif  // KVS_PARSER_H
+#endif  // CLIENT_PARSER_H

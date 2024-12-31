@@ -37,7 +37,7 @@ void handle_sigusr1() {
   server_data->sigusr1_received = 1;
 }
 
-void handle_sigint() {
+void handle_sigint_sigterm() {
   server_data->terminate = 1;
 }
 
@@ -51,16 +51,16 @@ void setup_signal_handling() {
 
   // SIGINT & SIGTERM
   struct sigaction sa;
-  sa.sa_handler = handle_sigint;
+  sa.sa_handler = handle_sigint_sigterm;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = 0;
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
 }
 
-int setup_register_fifo(char* register_fifo_path) {
+int setup_registration_fifo(char* registration_fifo_path) {
   if (pthread_create(&server_data->connection_manager, NULL,
-  connection_manager, register_fifo_path) != 0) {
+  connection_manager, registration_fifo_path) != 0) {
     write_str(STDERR_FILENO, "Failed to create connection manager thread.\n");
     return 1;
   }
@@ -75,7 +75,7 @@ int setup_client_workers() {
     cleanup_and_exit(1);
   }
   // Create a pool of worker threads.
-  for (int i = 0; i < MAX_SESSION_COUNT; i++) {
+  for (int i = 0; i < MAX_SESSION_COUNT; ++i) {
     if (pthread_create(&server_data->worker_threads[i], NULL,
     client_request_handler, NULL) != 0) {
       write_str(STDERR_FILENO, "Failed to create worker thread.\n");
@@ -86,28 +86,30 @@ int setup_client_workers() {
 }
 
 void cleanup_and_exit(int exit_code) {
-  // Signal the connection manager thread to exit if it was created.
-  if (atomic_load(&server_data->terminate)) {
-    atomic_store(&server_data->terminate, 1);
-    pthread_join(server_data->connection_manager, NULL);
-  }
-
-  // Join worker threads if they were created.
-  if (server_data->worker_threads != NULL) {
-    for (int i = 0; i < MAX_SESSION_COUNT; i++) {
-      if (server_data->worker_threads[i] != 0) {
-        pthread_cancel(server_data->worker_threads[i]);
-        pthread_join(server_data->worker_threads[i], NULL);
-      }
+  if (server_data) {
+    // Signal the connection manager thread to exit if it was created.
+    if (atomic_load(&server_data->terminate)) {
+      atomic_store(&server_data->terminate, 1);
+      pthread_join(server_data->connection_manager, NULL);
     }
-    // Free the worker threads array.
-    free(server_data->worker_threads);
+
+    // Join worker threads if they were created.
+    if (server_data->worker_threads != NULL) {
+      for (int i = 0; i < MAX_SESSION_COUNT; ++i) {
+        if (server_data->worker_threads[i] != 0) {
+          pthread_cancel(server_data->worker_threads[i]);
+          pthread_join(server_data->worker_threads[i], NULL);
+        }
+      }
+      // Free the worker threads array.
+      free(server_data->worker_threads);
+    }
+
+    // Destroy mutexes
+    pthread_mutex_destroy(&server_data->backups_mutex);
+    pthread_mutex_destroy(&server_data->all_subscriptions.mutex);
   }
-
   kvs_terminate();
-  pthread_mutex_destroy(&server_data->backups_mutex);
-  pthread_mutex_destroy(&server_data->all_subscriptions.mutex);
   free(server_data);
-
   _exit(exit_code);
 }

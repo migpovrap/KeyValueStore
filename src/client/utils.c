@@ -12,7 +12,6 @@ void initialize_client_data(char* client_id) {
   client_data->req_fifo_fd = -1;
   client_data->resp_fifo_fd = -1;
   client_data->notif_fifo_fd = -1;
-  client_data->notif_thread = 0;
 }
 
 /* Cancel notification thread, unlink FIFOs,
@@ -77,7 +76,7 @@ int create_fifos() {
   return 0;
 }
 
-// Notification listener thread function
+// Thread function.
 void* notification_listener() {
   char buffer[MAX_STRING_SIZE];
   while (!atomic_load(&client_data->terminate)) {

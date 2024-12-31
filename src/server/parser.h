@@ -1,5 +1,5 @@
-#ifndef KVS_PARSER_H
-#define KVS_PARSER_H
+#ifndef SERVER_PARSER_H
+#define SERVER_PARSER_H
 
 #include <stddef.h>
 
@@ -52,4 +52,4 @@ size_t max_string_size);
 /// @return 0 if no thread was specified, 1 if a thread was specified, -1 on error.
 int parse_wait(int fd, unsigned int *delay, unsigned int *thread_id);
 
-#endif  // KVS_PARSER_H
+#endif  // SERVER_PARSER_H

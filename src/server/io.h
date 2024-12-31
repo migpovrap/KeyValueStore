@@ -1,5 +1,5 @@
-#ifndef KVS_IO_H
-#define KVS_IO_H
+#ifndef SERVER_IO_H
+#define SERVER_IO_H
 
 #include <unistd.h>
 
@@ -20,4 +20,4 @@ void write_uint(int fd, int value);
 /// @return Number of bytes copied.
 size_t strn_memcpy(char* dest, const char* src, size_t n);
 
-#endif  // KVS_IO_H
+#endif  // SERVER_IO_H

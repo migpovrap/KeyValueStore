@@ -22,7 +22,7 @@
 #include "notifications.h"
 #include "connections.h"
 #include "jobs_manager.h"
-#include "server/utils.c"
+#include "server/utils.h"
 
 ServerData* server_data;
 
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
 
   setup_signal_handling();
 
-  setup_register_fifo(argv[4]);
+  setup_registration_fifo(argv[4]);
   
   dispatch_threads(dir);
 

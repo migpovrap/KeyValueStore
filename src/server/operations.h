@@ -1,5 +1,5 @@
-#ifndef KVS_OPERATIONS_H
-#define KVS_OPERATIONS_H
+#ifndef OPERATIONS_H
+#define OPERATIONS_H
 
 #include <stddef.h>
 
@@ -54,4 +54,4 @@ int kvs_backup(size_t num_backup,char* job_filename , char* directory);
 /// @param delay_us Delay in milliseconds.
 void kvs_wait(unsigned int delay_ms);
 
-#endif  // KVS_OPERATIONS_H
+#endif  // OPERATIONS_H

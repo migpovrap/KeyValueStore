@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef SERVER_UTILS_H
+#define SERVER_UTILS_H
 
 #include <signal.h>
 #include <stddef.h>
@@ -36,16 +36,16 @@ void initialize_server_data(char* job_path, char* max_threads, char* max_backups
 /// Signal handler for SIGUSR1.
 void handle_sigusr1();
 
-/// Signal handler for SIGINT.
-void handle_sigint();
+/// Signal handler for SIGINT and SIGTERM signals.
+void handle_sigint_sigterm();
 
-/// Setup signal handlers for SIGUSR1 and SIGINT.
+/// Setup signal handlers for SIGUSR1, SIGINT and SIGTERM.
 void setup_signal_handling();
 
 /// Setup server FIFO listener thread.
-/// @param register_fifo_path The path to the server register FIFO.
+/// @param registration_fifo_path The path to the server registration FIFO.
 /// @return int Returns 0 on success, or a negative error code on failure.
-int setup_register_fifo(char* register_fifo_path);
+int setup_registration_fifo(char* registration_fifo_path);
 
 /// Setup client worker threads.
 /// @return int Returns 0 on success, or a negative error code on failure.
@@ -55,4 +55,4 @@ int setup_client_workers();
 /// @param exit_code The exit code to be returned by the program.
 void cleanup_and_exit(int exit_code);
 
-#endif // UTILS_H
+#endif // SERVER_UTILS_H
