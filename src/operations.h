@@ -95,10 +95,17 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue);
 /**
  * @brief Auxiliary function to handle semaphore operations.
  * 
- * Checks for terminated child processes and when it finds one it increments (unlocks) the semaphore.
+ * Checks for terminated child processes and when it finds one, sets a flag true.
  */
 void signal_child_terminated();
 
-void* checks_for_terminated_chlidren();
+/**
+ * @brief Continuously checks for terminated child processes and handles them.
+ *
+ * When a child exits this function will cleanup the process using waitpid and
+ * release the slot in the semaphore, also resets the flag.
+ * 
+ */
+void* checks_for_terminated_children();
 
 #endif  // KVS_OPERATIONS_H

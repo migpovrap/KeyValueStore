@@ -215,14 +215,20 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
   sem_wait(&backup_semaphore);
 
   pid = fork();
-  if (pid < 0) return 1; // Fork failed
+  if (pid < 0) {
+    // Fork failed, release the semaphore slot
+    sem_post(&backup_semaphore);
+    return 1;
+  }
 
   if (pid == 0) {
     // This is the child process
     int backup_output_fd = open(backup_out_file_path,
     O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (backup_output_fd < 0) // Failed to open file
+    if (backup_output_fd < 0) { // Failed to open file
+      sem_post(&backup_semaphore); // Release the semaphore slot and exit
       _exit(EXIT_FAILURE);
+    }
     kvs_show_backup(backup_output_fd);
     close(backup_output_fd);
     free(backup_out_file_path);
@@ -236,21 +242,34 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
 }
 
 void signal_child_terminated() {
-  extern _Atomic int child_terminated;
-  atomic_store(&child_terminated, 1);
+  extern atomic_int child_terminated_flag;
+  atomic_store(&child_terminated_flag, 1);
 }
 
-void* checks_for_terminated_chlidren() {
+void* checks_for_terminated_children() {
+  // Block SIGCHLD signal for this thread
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
+
+  extern atomic_int child_terminated_flag;
+  extern atomic_int semaphore_thread_terminate_flag;
   extern sem_t backup_semaphore;
-  extern _Atomic int child_terminated;
-    while (atomic_load(&child_terminated) != -1) {
-      if (atomic_load(&child_terminated) == 1) {
-        atomic_store(&child_terminated, 0);
-          while (waitpid(-1, NULL, WNOHANG) > 0)
-            sem_post(&backup_semaphore);
-      }
+  while (!atomic_load(&semaphore_thread_terminate_flag)) {
+    while (atomic_load(&child_terminated_flag) == 0) {
       struct timespec delay = delay_to_timespec(1);
       nanosleep(&delay, NULL);
-    }      
+    }
+    atomic_store(&child_terminated_flag, 0);
+
+    while (waitpid(-1, NULL, WNOHANG) > 0) {
+      sem_post(&backup_semaphore);
+    }
+  }
+  // Clean up any remaining child processes
+  while (waitpid(-1, NULL, WNOHANG) > 0) {
+    sem_post(&backup_semaphore);
+  }
   return NULL;
 }

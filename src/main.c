@@ -10,7 +10,8 @@
 #include "macros.h"
 
 sem_t backup_semaphore;
-_Atomic int child_terminated = 0;
+atomic_int child_terminated_flag = 0;
+atomic_int semaphore_thread_terminate_flag = 0;
 
 int main(int argc, char *argv[]) {
   CHECK_RETURN_ONE(kvs_init(), "Failed to initialize KVS.");
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
   pthread_t threads[max_threads];
 
   pthread_t semaphore_thread;
-  pthread_create(&semaphore_thread, NULL, checks_for_terminated_chlidren, NULL);
+  pthread_create(&semaphore_thread, NULL, checks_for_terminated_children, NULL);
 
   for (int i = 0; i < max_threads && i < max_files; ++i)
     pthread_create(&threads[i], NULL, process_file, (void *)queue);
@@ -50,9 +51,9 @@ int main(int argc, char *argv[]) {
     nanosleep(&delay, NULL);
   }
 
-  atomic_store(&child_terminated, -1);
+  atomic_store(&semaphore_thread_terminate_flag, 1);
   pthread_join(semaphore_thread, NULL);
-
+  
   sem_destroy(&backup_semaphore);
   destroy_jobs_queue(queue);
   queue = NULL;

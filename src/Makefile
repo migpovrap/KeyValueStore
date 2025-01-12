@@ -4,7 +4,7 @@ CC = gcc
 CFLAGS = -g -std=c17 -D_POSIX_C_SOURCE=200809L -O3 \
   -Wall -Werror -Wextra \
   -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-enum -Wundef -Wunreachable-code -Wunused \
-  -fsanitize=thread -pthread
+  -fsanitize=address -pthread
 
 VALGRIND_CFLAGS = -g -O3 -std=c17 -D_POSIX_C_SOURCE=200809L \
   -Wall -Werror -Wextra \
@@ -26,7 +26,7 @@ kvs: main.c constants.h operations.o parser.o jobs_parser.o kvs.o
 	@$(CC) $(CFLAGS) -c ${@:.o=.c}
 
 run: kvs
-	@./kvs ../jobs 7 3
+	@./kvs ../jobs 12 24
 
 rm: # Removes job outs and backups.
 	@rm -rf ../jobs/*.out ../jobs/**/*.out
@@ -47,7 +47,7 @@ format:
 	@clang-format -i *.c *.h
 
 test: kvs
-	@{ time ./kvs ../jobs 1 1 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
+	@{ time ./kvs ../jobs 2 3 > /dev/null; } 2>&1 | grep -E 'real|user|sys'
 	@$(MAKE) -s clean
 
 valgrind: CFLAGS=$(VALGRIND_CFLAGS)

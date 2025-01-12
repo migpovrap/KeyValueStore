@@ -320,6 +320,12 @@ void destroy_jobs_queue(JobQueue *queue) {
 }
 
 void *process_file(void *arg) {
+  // Block SIGCHLD signal for this thread
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
+  
   JobQueue *queue = (JobQueue *)arg;
   pthread_mutex_lock(&queue->queue_mutex);
   while (queue->num_files > 0) {
