@@ -11,7 +11,6 @@
 
 sem_t backup_semaphore;
 atomic_int child_terminated_flag = 0;
-atomic_int semaphore_thread_terminate_flag = 0;
 
 int main(int argc, char *argv[]) {
   CHECK_RETURN_ONE(kvs_init(), "Failed to initialize KVS.");
@@ -59,13 +58,12 @@ int main(int argc, char *argv[]) {
     struct timespec delay = delay_to_timespec(1);
     nanosleep(&delay, NULL);
   }
-
-  atomic_store(&semaphore_thread_terminate_flag, 1);
-  pthread_join(semaphore_thread, NULL);
-
   // Very small wait to avoid missing signals or exit before child cleanup.
   struct timespec delay = delay_to_timespec(1);
   nanosleep(&delay, NULL);
+
+  pthread_cancel(semaphore_thread);
+  pthread_join(semaphore_thread, NULL);
 
   sem_destroy(&backup_semaphore);
   destroy_jobs_queue(queue);

@@ -254,22 +254,16 @@ void* checks_for_terminated_children() {
   pthread_sigmask(SIG_BLOCK, &set, NULL);
 
   extern atomic_int child_terminated_flag;
-  extern atomic_int semaphore_thread_terminate_flag;
   extern sem_t backup_semaphore;
-  while (!atomic_load(&semaphore_thread_terminate_flag)) {
+  while (1) {
     while (atomic_load(&child_terminated_flag) == 0) {
       struct timespec delay = delay_to_timespec(1);
       nanosleep(&delay, NULL);
     }
     atomic_store(&child_terminated_flag, 0);
 
-    while (waitpid(-1, NULL, WNOHANG) > 0) {
+    while (waitpid(-1, NULL, WNOHANG) > 0)
       sem_post(&backup_semaphore);
-    }
-  }
-  // Clean up any remaining child processes
-  while (waitpid(-1, NULL, WNOHANG) > 0) {
-    sem_post(&backup_semaphore);
   }
   return NULL;
 }
