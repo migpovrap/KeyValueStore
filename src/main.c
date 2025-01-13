@@ -22,6 +22,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // Block SIGCHLD signal for all threads initially
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
+
   // Sigaction struct to handle SIGCHLD signals
   struct sigaction signal_action;
   signal_action.sa_handler = signal_child_terminated;
@@ -29,6 +35,9 @@ int main(int argc, char *argv[]) {
   signal_action.sa_flags = SA_RESTART; // Restart interrupted system calls
 
   CHECK_RETURN_ONE(sigaction(SIGCHLD, &signal_action, NULL), "sigaction");
+
+  // Unblock SIGCHLD signal for the main thread
+  pthread_sigmask(SIG_UNBLOCK, &set, NULL);
   
   JobQueue *queue = create_job_queue(argv[1]);
   CHECK_NULL(queue, "Failed to create job queue.");
@@ -53,7 +62,11 @@ int main(int argc, char *argv[]) {
 
   atomic_store(&semaphore_thread_terminate_flag, 1);
   pthread_join(semaphore_thread, NULL);
-  
+
+  // Very small wait to avoid missing signals or exit before child cleanup.
+  struct timespec delay = delay_to_timespec(1);
+  nanosleep(&delay, NULL);
+
   sem_destroy(&backup_semaphore);
   destroy_jobs_queue(queue);
   queue = NULL;
