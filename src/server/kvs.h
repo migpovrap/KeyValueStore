@@ -8,14 +8,14 @@
 #include <string.h>
 
 typedef struct KeyNode {
-    char *key;
-    char *value;
-    struct KeyNode *next;
+  char *key;
+  char *value;
+  struct KeyNode *next;
 } KeyNode;
 
 typedef struct HashTable {
-    KeyNode *table[TABLE_SIZE];
-    pthread_rwlock_t tablelock;
+  KeyNode *table[TABLE_SIZE];
+  pthread_rwlock_t hash_lock[TABLE_SIZE];
 } HashTable;
 
 /// Creates a new KVS hash table.

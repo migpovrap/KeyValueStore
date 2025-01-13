@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "common/constants.h"
+#include "notifications.h"
 
 typedef struct ClientData {
   volatile atomic_bool terminate;

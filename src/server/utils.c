@@ -22,12 +22,12 @@ char* max_threads, char* max_backups) {
 		cleanup_and_exit(1);
 	}
 
-  pthread_mutex_init(&server_data->backups_mutex, NULL);
   pthread_mutex_init(&server_data->all_subscriptions.mutex, NULL);
+  sem_init(&server_data->backup_semaphore, 0, (unsigned int)server_data->max_backups); // 0 means semaphore is shared between threads of the same process
   server_data->all_subscriptions.subscription_data = NULL;
-  server_data->active_backups = 0;
   server_data->jobs_directory = job_path;
   server_data->sigusr1_received = 0;
+  server_data->child_terminated_flag = 0;
   server_data->terminate = 0;
 }
 
@@ -54,6 +54,13 @@ void setup_signal_handling() {
   sa.sa_flags = 0;
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
+
+  // Sigaction struct to handle SIGCHLD signals
+  struct sigaction sa_child;
+  sa_child.sa_handler = signal_child_terminated;
+  sigemptyset(&sa_child.sa_mask); // Initialize the signal set to empty
+  sa_child.sa_flags = SA_RESTART; // Restart interrupted system calls
+  CHECK_RETURN_ONE(sigaction(SIGCHLD, &sa_child, NULL), "sigaction");
 }
 
 int setup_registration_fifo(char* registration_fifo_path) {
@@ -105,10 +112,42 @@ void cleanup_and_exit(int exit_code) {
     }
 
     // Destroy mutexes
-    pthread_mutex_destroy(&server_data->backups_mutex);
     pthread_mutex_destroy(&server_data->all_subscriptions.mutex);
   }
   kvs_terminate();
   free(server_data);
   _exit(exit_code);
+}
+
+void run_jobs() {
+  JobQueue *queue = create_job_queue(server_data->jobs_directory);
+  CHECK_NULL(queue, "Failed to create job queue.");
+  int max_threads = (int) server_data->max_threads;
+  int max_files = queue->num_files;
+  pthread_t threads[max_threads];
+
+  pthread_t semaphore_thread;
+  pthread_create(&semaphore_thread, NULL, checks_for_terminated_children, NULL);
+
+  for (int i = 0; i < max_threads && i < max_files; ++i)
+    pthread_create(&threads[i], NULL, process_file, (void *)queue);
+
+  for (int i = 0; i < max_threads && i < max_files; ++i)
+    pthread_join(threads[i], NULL);
+
+  while (sem_trywait(&server_data->backup_semaphore) != 0) {
+    struct timespec delay = delay_to_timespec(1);
+    nanosleep(&delay, NULL);
+  }
+  // Very small wait to avoid missing signals or exit before child cleanup.
+  struct timespec delay = delay_to_timespec(1);
+  nanosleep(&delay, NULL);
+
+  pthread_cancel(semaphore_thread);
+  pthread_join(semaphore_thread, NULL);
+
+  sem_destroy(&server_data->backup_semaphore);
+  destroy_jobs_queue(queue);
+  queue = NULL;
+  return;
 }

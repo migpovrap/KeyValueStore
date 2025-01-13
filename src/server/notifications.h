@@ -8,17 +8,7 @@
 
 #include "common/constants.h"
 #include "server/io.h"
-
-typedef struct SubscriptionData {
-  char key[MAX_STRING_SIZE];
-  int notification_fifo_fd;
-  struct SubscriptionData* next;
-} SubscriptionData;
-
-typedef struct ClientSubscriptions {
-  pthread_mutex_t mutex;
-  struct SubscriptionData* subscription_data;
-} ClientSubscriptions;
+#include "server/subscriptions.h"
 
 /// Adds a subscription for a given key.
 /// @param key The key to subscribe to.

@@ -1,191 +1,289 @@
 #include "operations.h"
+#include "kvs.h"
+#include "jobs_manager.h"
+#include "macros.h"
 
-static struct HashTable *kvs_table = NULL;
+static struct HashTable* hash_table = NULL;
+extern ServerData* server_data;
 
-/// Calculates a timespec from a delay in milliseconds.
-/// @param delay_ms Delay in milliseconds.
-/// @return Timespec with the given delay.
-static struct timespec delay_to_timespec(unsigned int delay_ms) {
+struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
 
 int kvs_init() {
-  if (kvs_table != NULL) {
-    write_str(STDERR_FILENO, "KVS state has already been initialized.\n");
-    return 1;
-  }
+  CHECK_NOT_NULL(hash_table, "KVS state has already been initialized.");
 
-  kvs_table = create_hash_table();
-  return kvs_table == NULL;
+  hash_table = create_hash_table();
+  return hash_table == NULL; // Checks if the HashTable was created successfully
 }
 
 int kvs_terminate() {
-  if (kvs_table == NULL) {
-    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
-    return 1;
-  }
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
 
-  free_table(kvs_table);
-  kvs_table = NULL;
+  free_table(hash_table);
+  hash_table = NULL;
   return 0;
 }
 
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
-char values[][MAX_STRING_SIZE]) {
-  if (kvs_table == NULL) {
-    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
-    return 1;
-  }
+/**
+ * @brief Locks or unlocks hash table entries based on the provided keys and lock type.
+ *
+ * Ensures locks are always locked and unlocked in a specific order to avoid deadlocks.
+ * 
+ * @param keys An array of strings representing the keys to be locked or unlocked.
+ * @param num_pairs The number of key-value pairs.
+ * @param type The type of lock operation to perform (READ_LOCK, WRITE_LOCK, READ_UNLOCK, WRITE_UNLOCK)
+ */
+void lock_unlock_hashes(char keys[][MAX_STRING_SIZE], size_t num_pairs, LOCK_TYPE type) {
+  int HASH_LOCK_BITMAP[TABLE_SIZE] = {0};
+  
+  for (size_t i = 0; i < num_pairs; ++i)
+    HASH_LOCK_BITMAP[hash(keys[i])] = 1;
 
-  pthread_rwlock_wrlock(&kvs_table->tablelock);
+  for (int i = 0; i < TABLE_SIZE; ++i)
+    if (HASH_LOCK_BITMAP[i])
+      switch (type) {
+        case READ_LOCK:
+          pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
+          break;
+        case WRITE_LOCK:
+          pthread_rwlock_wrlock(&hash_table->hash_lock[i]);
+          break;
+        case READ_UNLOCK:
+          pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+          break;
+        case WRITE_UNLOCK:
+          pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+          break;
+      }
+}
 
-  for (size_t i = 0; i < num_pairs; i++) {
-    if (write_pair(kvs_table, keys[i], values[i]) != 0) {
-      fprintf(stderr, "Failed to write key pair (%s,%s).\n", keys[i], values[i]);
-    }
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], 
+char values[][MAX_STRING_SIZE], int fd) {
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
+
+  lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
+
+  for (size_t i = 0; i < num_pairs; ++i) {
+    if (write_pair(hash_table, keys[i], values[i]) != 0)
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     notify_subscribers(keys[i], values[i]);
   }
+  
+  lock_unlock_hashes(keys, num_pairs, WRITE_UNLOCK);
 
-  pthread_rwlock_unlock(&kvs_table->tablelock);
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
 int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  if (kvs_table == NULL) {
-    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
-    return 1;
-  }
-  
-  pthread_rwlock_rdlock(&kvs_table->tablelock);
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
 
-  write_str(fd, "[");
-  for (size_t i = 0; i < num_pairs; i++) {
-    char *result = read_pair(kvs_table, keys[i]);
-    char aux[MAX_STRING_SIZE];
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
+
+  lock_unlock_hashes(keys, num_pairs, READ_LOCK);
+
+  for (size_t i = 0; i < num_pairs; ++i) {
+    char* result = read_pair(hash_table, keys[i]);
     if (result == NULL) {
-      snprintf(aux, MAX_STRING_SIZE, "(%s,KVSERROR)", keys[i]);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "(%s,KVSERROR)", keys[i]);
     } else {
-      snprintf(aux, MAX_STRING_SIZE, "(%s,%s)", keys[i], result);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "(%s,%s)", keys[i], result);
     }
-    write_str(fd, aux);
     free(result);
+    result = NULL;
   }
-  write_str(fd, "]\n");
-  
-  pthread_rwlock_unlock(&kvs_table->tablelock);
+
+  lock_unlock_hashes(keys, num_pairs, READ_UNLOCK);
+
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd) {
-  if (kvs_table == NULL) {
-    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
-    return 1;
-  }
-  
-  pthread_rwlock_wrlock(&kvs_table->tablelock);
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  CHECK_NULL(hash_table, "KVS state must be initialized.");
 
   int aux = 0;
+
+  lock_unlock_hashes(keys, num_pairs, WRITE_LOCK);
+  
   for (size_t i = 0; i < num_pairs; i++) {
-    if(delete_pair(kvs_table, keys[i]) != 0) {
+    if (delete_pair(hash_table, keys[i]) != 0) {
       if (!aux) {
-        write_str(fd, "[");
+        offset += (size_t) snprintf(buffer + offset, buff_size - offset, "[");
         aux = 1;
       }
-      char str[MAX_STRING_SIZE];
-      snprintf(str, MAX_STRING_SIZE, "(%s,KVSMISSING)", keys[i]);
-      write_str(fd, str);
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "(%s,KVSMISSING)", keys[i]);
     }
     notify_subscribers(keys[i], "DELETED");
   }
-  if (aux) {
-    write_str(fd, "]\n");
-  }
 
-  pthread_rwlock_unlock(&kvs_table->tablelock);
+  lock_unlock_hashes(keys, num_pairs, WRITE_UNLOCK);
+
+  if (aux)
+    offset += (size_t) snprintf(buffer + offset, buff_size - offset, "]\n");
+
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
   return 0;
 }
 
 void kvs_show(int fd) {
-  if (kvs_table == NULL) {
-    write_str(STDERR_FILENO, "KVS state must be initialized.\n");
-    return;
-  }
-  
-  pthread_rwlock_rdlock(&kvs_table->tablelock);
-  char aux[MAX_STRING_SIZE];
-  
-  for (int i = 0; i < TABLE_SIZE; i++) {
-    KeyNode *keyNode = kvs_table->table[i]; // Get the next list head
-    while (keyNode != NULL) {
-      snprintf(aux, MAX_STRING_SIZE, "(%s, %s)\n",
-      keyNode->key, keyNode->value);
-      write_str(fd, aux);
-      keyNode = keyNode->next; // Move to the next node of the list
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+
+  for (int i = 0; i < TABLE_SIZE; i++)
+    pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
+
+  for (int i = 0; i < TABLE_SIZE; ++i) {
+    KeyNode *key_node = hash_table->table[i];
+    while (key_node != NULL) {
+      offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+      "(%s, %s)\n", key_node->key, key_node->value);
+      key_node = key_node->next;
     }
   }
 
-  pthread_rwlock_unlock(&kvs_table->tablelock);
-}
+  for (int i = 0; i < TABLE_SIZE; ++i)
+    pthread_rwlock_unlock(&hash_table->hash_lock[i]);
 
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
+}
 int key_exists(const char *key) {
-  if (kvs_table == NULL) {
+  if (hash_table == NULL) {
     write_str(STDERR_FILENO, "KVS state must be initialized.\n");
     return 0;
   }
 
-  pthread_rwlock_rdlock(&kvs_table->tablelock);
-  char *result = read_pair(kvs_table, key);
-  pthread_rwlock_unlock(&kvs_table->tablelock);
+  for (int i=0; i < TABLE_SIZE; i++)
+    pthread_rwlock_rdlock(&hash_table->hash_lock[i]);
 
-if (result == NULL) {
-  return 1; // Key does not exist
-} else {
-  free(result);
-  return 0; // Key exists
+  char *result = read_pair(hash_table, key);
+
+  for (int i=0; i < TABLE_SIZE; i++)
+    pthread_rwlock_unlock(&hash_table->hash_lock[i]);
+
+  if (result == NULL) {
+    return 1; // Key does not exist
+  } else {
+    free(result);
+    return 0; // Key exists
+  }
 }
-}
-
-int kvs_backup(size_t num_backup,char* job_filename , char* directory) {
-  pid_t pid;
-  char bck_name[50];
-  snprintf(bck_name, sizeof(bck_name), "%s/%s-%ld.bck",
-  directory, strtok(job_filename, "."), num_backup);
-
-  pthread_rwlock_rdlock(&kvs_table->tablelock);
-  pid = fork();
-  pthread_rwlock_unlock(&kvs_table->tablelock);
-  if (pid == 0) {
-    // functions used here have to be async signal safe, since this
-    // fork happens in a multi thread context (see man fork)
-    int fd = open(bck_name, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    for (int i = 0; i < TABLE_SIZE; i++) {
-      KeyNode *keyNode = kvs_table->table[i]; // Get the next list head
-      while (keyNode != NULL) {
-        char aux[MAX_STRING_SIZE];
-        aux[0] = '(';
-        size_t num_bytes_copied = 1; // the "("
-        // the - 1 are all to leave space for the '/0'
-        num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-        keyNode->key, MAX_STRING_SIZE - num_bytes_copied - 1);
-        num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-        ", ", MAX_STRING_SIZE - num_bytes_copied - 1);
-        num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-        keyNode->value, MAX_STRING_SIZE - num_bytes_copied - 1);
-        num_bytes_copied += strn_memcpy(aux + num_bytes_copied,
-        ")\n", MAX_STRING_SIZE - num_bytes_copied - 1);
-        aux[num_bytes_copied] = '\0';
-        write_str(fd, aux);
-        keyNode = keyNode->next; // Move to the next node of the list
-      }
+/**
+ * @brief Thread-safe version of kvs_show using memcpy that writes the contents of the hash table to a file descriptor.
+ *
+ * This function iterates through the hash table and writes each key-value pair to the provided file descriptor
+ * in the format "(key, value)\n". It ensures that the buffer does not overflow by checking the available space
+ * before writing each key-value pair.
+ *
+ * @param fd The file descriptor to which the hash table contents will be written.
+ */
+void kvs_show_backup(int fd) {
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  for (int i = 0; i < TABLE_SIZE; ++i) {
+    KeyNode *key_node = hash_table->table[i];
+    while (key_node != NULL) {
+      size_t len_key = strlen(key_node -> key);
+      size_t len_value = strlen(key_node -> value);
+      size_t line_len = len_key + len_value + 5; // For (, )\n
+      if (offset + line_len < buff_size) {
+        buffer[offset++] = '(';
+        memcpy(buffer + offset, key_node -> key, len_key);
+        offset += len_key;
+        memcpy(buffer + offset, ", ", 2);
+        offset += 2;
+        memcpy(buffer + offset, key_node -> value, len_value);
+        offset += len_value;
+        memcpy(buffer + offset, ")\n", 2);
+        offset += 2;
+        buffer[offset] = '\0';
+      }  
+      key_node = key_node->next;
     }
-    exit(1);
-  } else if (pid < 0) {
-    return -1;
+  }
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
+}
+
+void kvs_wait(unsigned int delay_ms, int fd) {
+  char buffer[PIPE_BUF];
+  size_t buff_size = sizeof(buffer);
+  size_t offset = 0;
+  offset += (size_t) snprintf(buffer + offset, buff_size - offset,
+  "Waiting...\n");
+  CHECK_RETURN_MINUS_ONE(write(fd, buffer, offset), "Error during writing.");
+  struct timespec delay = delay_to_timespec(delay_ms);
+  nanosleep(&delay, NULL);
+}
+
+int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
+  pid_t pid;
+
+  sem_wait(&server_data->backup_semaphore);
+
+  pid = fork();
+  if (pid < 0) {
+    // Fork failed, release the semaphore slot
+    sem_post(&server_data->backup_semaphore);
+    return 1;
+  }
+
+  if (pid == 0) {
+    // This is the child process
+    int backup_output_fd = open(backup_out_file_path,
+    O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (backup_output_fd < 0) { // Failed to open file
+      _exit(EXIT_FAILURE);
+    }
+    kvs_show_backup(backup_output_fd);
+    close(backup_output_fd);
+    free(backup_out_file_path);
+    backup_out_file_path = NULL;
+    destroy_jobs_queue(queue);
+    queue = NULL;
+    kvs_terminate();
+    _exit(EXIT_SUCCESS);
   }
   return 0;
 }
 
-void kvs_wait(unsigned int delay_ms) {
-  struct timespec delay = delay_to_timespec(delay_ms);
-  nanosleep(&delay, NULL);
+
+void signal_child_terminated() {
+  atomic_store(&server_data->child_terminated_flag, 1);
+}
+
+void* checks_for_terminated_children() {
+  // Block SIGCHLD signal for this thread
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
+
+  while (1) {
+    while (atomic_load(&server_data->child_terminated_flag) == 0) {
+      struct timespec delay = delay_to_timespec(1);
+      nanosleep(&delay, NULL);
+    }
+    atomic_store(&server_data->child_terminated_flag, 0);
+
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+      sem_post(&server_data->backup_semaphore);
+  }
+  return NULL;
 }

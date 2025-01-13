@@ -33,12 +33,6 @@ int main(int argc, char** argv) {
     write_str(STDERR_FILENO, "Failed to initialize KVS.\n");
     cleanup_and_exit(1);
   }
-
-  DIR* dir = opendir(argv[1]);
-  if (dir == NULL) {
-    fprintf(stderr, "Failed to open directory: %s\n", argv[1]);
-    cleanup_and_exit(1);
-  }
   
   initialize_session_buffer();
 
@@ -48,17 +42,9 @@ int main(int argc, char** argv) {
 
   setup_registration_fifo(argv[4]);
   
-  dispatch_threads(dir);
-
-  if (closedir(dir) == -1) {
-    write_str(STDERR_FILENO, "Failed to close directory.\n");
-    cleanup_and_exit(1);
-  }
-
-  while (server_data->active_backups > 0) {
-    wait(NULL);
-    server_data->active_backups--;
-  }
+  printf("Started running jobs, server setup and ready for connections.\n");
+  run_jobs();
+  printf("Finished processing jobs.\n");
 
   while (!atomic_load(&server_data->terminate))
     sleep(1);

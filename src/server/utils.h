@@ -9,16 +9,17 @@
 
 #include "common/constants.h"
 #include "connections.h"
-#include "notifications.h"
-#include "operations.h"
 #include "server/io.h"
+#include "server/subscriptions.h"
+#include "jobs_manager.h"
+#include "operations.h"
 
 typedef struct ServerData {
   char* jobs_directory;                             // Directory containing the jobs files
   size_t max_threads;                               // Maximum allowed simultaneous threads.
   size_t max_backups;                               // Maximum allowed simultaneous backups.
-  size_t active_backups;                            // Number of active backups.
-  pthread_mutex_t backups_mutex;                    // Mutex to lock number of active backups.
+  sem_t backup_semaphore;                           // Semaphore to control access to backup operations.
+  atomic_int child_terminated_flag;                 // Flag indicating a child process has terminated.
   pthread_t connection_manager;                     // Thread to listen for client connections to the server.
   pthread_t* worker_threads;                        // Array of client worker threads.
   sig_atomic_t sigusr1_received;                    // Flag indicating SIGUSR1 signal was recieved.
@@ -53,5 +54,8 @@ int setup_client_workers();
 /// Cleanup resources and exit the program.
 /// @param exit_code The exit code to be returned by the program.
 void cleanup_and_exit(int exit_code);
+
+/// Runs the jobs files.
+void run_jobs();
 
 #endif // SERVER_UTILS_H
