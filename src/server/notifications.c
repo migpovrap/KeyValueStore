@@ -9,6 +9,10 @@ int add_subscription(const char* key, int notification_fifo_fd) {
     return 1; // Key does not exist.
   }
 
+  if (is_already_subscribed(key, notification_fifo_fd)) {
+    return 3;
+  }
+
   SubscriptionData* new_sub = malloc(sizeof(SubscriptionData));
   if (new_sub == NULL) {
     write_str(STDERR_FILENO, "Failed to allocate memory for subscrpition data.\n");
@@ -25,6 +29,17 @@ int add_subscription(const char* key, int notification_fifo_fd) {
   pthread_mutex_unlock(&server_data->all_subscriptions.mutex);
 
   return 0;
+}
+
+int is_already_subscribed(const char* key, int notification_fifo_fd) {
+  SubscriptionData* current = server_data->all_subscriptions.subscription_data;
+  while (current != NULL) {
+    if (strncmp(current->key, key, MAX_STRING_SIZE) == 0 && current->notification_fifo_fd == notification_fifo_fd) {
+      return 1; // Subscription already exists.
+    }
+    current = current->next;
+  }
+  return 0; // Subscription does not exist.
 }
 
 int remove_subscription(const char* key) {

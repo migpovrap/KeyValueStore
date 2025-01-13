@@ -25,15 +25,11 @@ int kvs_terminate() {
   return 0;
 }
 
-/**
- * @brief Locks or unlocks hash table entries based on the provided keys and lock type.
- *
- * Ensures locks are always locked and unlocked in a specific order to avoid deadlocks.
- * 
- * @param keys An array of strings representing the keys to be locked or unlocked.
- * @param num_pairs The number of key-value pairs.
- * @param type The type of lock operation to perform (READ_LOCK, WRITE_LOCK, READ_UNLOCK, WRITE_UNLOCK)
- */
+/// Locks or unlocks hash table entries based on the provided keys and lock type.
+/// Ensures locks are always locked and unlocked in a specific order to avoid deadlocks.
+/// @param keys An array of strings representing the keys to be locked or unlocked.
+/// @param num_pairs The number of key-value pairs.
+/// @param type The type of lock operation to perform (READ_LOCK, WRITE_LOCK, READ_UNLOCK, WRITE_UNLOCK)
 void lock_unlock_hashes(char keys[][MAX_STRING_SIZE], size_t num_pairs, LOCK_TYPE type) {
   int HASH_LOCK_BITMAP[TABLE_SIZE] = {0};
   
@@ -184,15 +180,12 @@ int key_exists(const char *key) {
     return 0; // Key exists
   }
 }
-/**
- * @brief Thread-safe version of kvs_show using memcpy that writes the contents of the hash table to a file descriptor.
- *
- * This function iterates through the hash table and writes each key-value pair to the provided file descriptor
- * in the format "(key, value)\n". It ensures that the buffer does not overflow by checking the available space
- * before writing each key-value pair.
- *
- * @param fd The file descriptor to which the hash table contents will be written.
- */
+
+/// Thread-safe version of kvs_show using memcpy that writes the contents of the hash table to a file descriptor.
+/// This function iterates through the hash table and writes each key-value pair to the provided file descriptor
+/// in the format "(key, value)\n". It ensures that the buffer does not overflow by checking the available space
+/// before writing each key-value pair.
+/// @param fd The file descriptor to which the hash table contents will be written.
 void kvs_show_backup(int fd) {
   char buffer[PIPE_BUF];
   size_t buff_size = sizeof(buffer);

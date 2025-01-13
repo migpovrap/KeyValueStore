@@ -169,6 +169,8 @@ void handle_client_request(ClientData* client_data) {
   }
 
   send_message(resp_fifo_fd, OP_CODE_CONNECT, 0);
+  char* client_id = strrchr(client_data->req_pipe_path, 'q');
+    printf("Client %s connected.\n", client_id + 1);
   
   char buffer[MAX_STRING_SIZE];
   while (!atomic_load(&client_data->terminate)) {
@@ -191,6 +193,8 @@ void handle_client_request(ClientData* client_data) {
           key, OP_CODE_UNSUBSCRIBE);
           break;
         case OP_CODE_DISCONNECT:
+          client_id = strrchr(client_data->req_pipe_path, 'q');
+          printf("Client %s disconnected.\n", client_id + 1);
           handle_client_disconnect(resp_fifo_fd, req_fifo_fd, notif_fifo_fd);
           return;
         case OP_CODE_CONNECT:

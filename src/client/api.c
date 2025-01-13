@@ -123,9 +123,13 @@ int kvs_subscribe(ClientData* client_data, const char* key) {
 
   int server_response = check_server_response(&client_data->resp_fifo_fd);
   printf("Server returned %d for operation: subscribe.\n", server_response);
-  
+
   if (server_response != 0)
     return 1;
+  
+  if (server_response == 3)
+    printf("Key was already subscribed to previously.\n");
+
 
   // Increment client subscriptions.
   __sync_fetch_and_add(&client_data->client_subs, 1);

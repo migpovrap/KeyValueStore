@@ -12,12 +12,9 @@
 
 extern ServerData* server_data;
 
-/**
- * @brief Initializes a Job structure with the given file path.
- *
- * @param job Pointer to the Job structure to be initialized.
- * @param file_path Path to the job file.
- */
+/// Initializes a Job structure with the given file path.
+/// @param job Pointer to the Job structure to be initialized.
+/// @param file_path Path to the job file.
 void initialize_job(Job *job, const char *file_path) {
   job->job_file_path = strdup(file_path);
   job->job_fd = -1;
@@ -26,11 +23,8 @@ void initialize_job(Job *job, const char *file_path) {
   job->next = NULL;
 }
 
-/**
- * @brief Initializes the job queue.
- * 
- * @param queue The job queue to initialize.
- */
+ /// Initializes the job queue.
+ /// @param queue The job queue to initialize.
 void initialize_jobs_queue(JobQueue *queue) {
   queue->current_job = NULL;
   queue->last_job = NULL;
@@ -38,12 +32,9 @@ void initialize_jobs_queue(JobQueue *queue) {
   pthread_mutex_init(&queue->queue_mutex, NULL);
 }
 
-/**
- * @brief Adds a job to the queue.
- * 
- * @param queue The job queue.
- * @param job The job data to add.
- */
+/// Adds a job to the queue.
+/// @param queue The job queue.
+/// @param job The job data to add.
 void enqueue_job(JobQueue *queue, Job *job) {
   pthread_mutex_lock(&queue->queue_mutex);
   job->next = NULL;
@@ -59,12 +50,9 @@ void enqueue_job(JobQueue *queue, Job *job) {
   pthread_mutex_unlock(&queue->queue_mutex);
 }
 
-/**
- * @brief Removes a job from the queue.
- * 
- * @param queue The job queue.
- * @return Job* The job data removed from the queue, or NULL if the queue is empty.
- */
+/// Removes a job from the queue.
+/// @param queue The job queue.
+/// @return Job* The job data removed from the queue, or NULL if the queue is empty.
 Job* dequeue_job(JobQueue *queue) {
   if (queue->current_job == NULL) {
     return NULL;
@@ -75,17 +63,13 @@ Job* dequeue_job(JobQueue *queue) {
   return job;
 }
 
-/**
- * @brief Recursively creates jobs from files in a directory and adds them to the job queue.
- * 
- * This function checks if the current file is a job file or a directory. If it's a job file,
- * it initializes a Job structure and enqueues it. If it's a directory, it recursively processes
- * the directory to find more job files.
- * 
- * @param queue Pointer to the job queue.
- * @param current_file Pointer to the current directory entry.
- * @param dir_path Path to the directory containing job entries.
- */
+/// Recursively creates jobs from files in a directory and adds them to the job queue.
+/// This function checks if the current file is a job file or a directory. If it's a job file,
+/// it initializes a Job structure and enqueues it. If it's a directory, it recursively processes
+/// the directory to find more job files. 
+/// @param queue Pointer to the job queue.
+/// @param current_file Pointer to the current directory entry.
+/// @param dir_path Path to the directory containing job entries.
 void create_jobs(JobQueue **queue, struct dirent *current_file,
 char *dir_path) {
   if (current_file->d_type == 8 && strstr(current_file->d_name, ".job") != NULL) {
@@ -130,16 +114,12 @@ JobQueue *create_job_queue(char *dir_path) {
   return queue;
 }
 
-/**
- * @brief Handles the write command for a job.
- *
- * This function parses the write command from the job's file descriptor,
- * extracts the key-value pairs, and writes them to the key-value store.
- *
- * @param job Pointer to the Job structure containing job details.
- * @param keys Pointer to a 2D array to store the keys.
- * @param values Pointer to a 2D array to store the values.
- */
+/// Handles the write command for a job.
+/// This function parses the write command from the job's file descriptor,
+/// extracts the key-value pairs, and writes them to the key-value store.
+/// @param job Pointer to the Job structure containing job details.
+/// @param keys Pointer to a 2D array to store the keys.
+/// @param values Pointer to a 2D array to store the values.
 void cmd_write(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE],
 char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
@@ -152,15 +132,11 @@ char (*values)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   "Failed to write pair.");
 }
 
-/**
- * @brief Reads key-value pairs from a job file descriptor and processes them.
- *
- * This function reads key-value pairs from the job's file descriptor, parses them,
- * and attempts to read the corresponding values from the key-value store.
- *
- * @param job A pointer to the Job structure containing job-related information.
- * @param keys A pointer to an array where the parsed keys will be stored.
- */
+/// Reads key-value pairs from a job file descriptor and processes them.
+/// This function reads key-value pairs from the job's file descriptor, parses them,
+/// and attempts to read the corresponding values from the key-value store.
+/// @param job A pointer to the Job structure containing job-related information.
+/// @param keys A pointer to an array where the parsed keys will be stored.
 void cmd_read(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
   num_pairs = parse_read_delete(job->job_fd, *keys,
@@ -172,16 +148,12 @@ void cmd_read(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   "Failed to read pair.");
 }
 
-/**
- * @brief Deletes key-value pairs based on the provided job.
- *
- * This function parses the keys from the job's file descriptor and attempts to delete
- * the corresponding key-value pairs from the key-value store. If the command is invalid
- * or if the deletion fails, appropriate error messages are printed to stderr.
- *
- * @param job Pointer to the Job structure containing job details.
- * @param keys Pointer to a 2D array where parsed keys will be stored.
- */
+/// Deletes key-value pairs based on the provided job.
+/// This function parses the keys from the job's file descriptor and attempts to delete
+/// the corresponding key-value pairs from the key-value store. If the command is invalid
+/// or if the deletion fails, appropriate error messages are printed to stderr.
+/// @param job Pointer to the Job structure containing job details.
+/// @param keys Pointer to a 2D array where parsed keys will be stored.
 void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   size_t num_pairs;
   num_pairs = parse_read_delete(job->job_fd, *keys,
@@ -193,14 +165,11 @@ void cmd_delete(Job* job, char (*keys)[MAX_WRITE_SIZE][MAX_STRING_SIZE]) {
   "Failed to delete pair.");
 }
 
-/**
- * @brief Executes a wait command for a job.
- *
- * This function parses the wait command from the job's file descriptor,
- * retrieves the delay value, and writes waiting to the job's output file.
- *
- * @param job Pointer to the Job structure containing job details.
- */
+
+/// Executes a wait command for a job.
+/// This function parses the wait command from the job's file descriptor,
+/// retrieves the delay value, and writes waiting to the job's output file.
+/// @param job Pointer to the Job structure containing job details.
 void cmd_wait(Job* job) {
   unsigned int delay;
 
@@ -211,15 +180,11 @@ void cmd_wait(Job* job) {
     kvs_wait(delay, job->job_output_fd);
 }
 
-/**
- * @brief Performs a backup of the job file and increments the backup counter.
- *
- * This function creates a backup of the job file specified in the Job structure.
- * And increments the backup counter to keep track of the number of backups.
- *
- * @param job A pointer to the Job structure.
- * @param queue A pointer to the JobQueue structure.
- */
+/// Performs a backup of the job file and increments the backup counter.
+/// This function creates a backup of the job file specified in the Job structure.
+/// And increments the backup counter to keep track of the number of backups.
+/// @param job A pointer to the Job structure.
+/// @param queue A pointer to the JobQueue structure.
 void cmd_backup(Job* job, JobQueue* queue) {
   char *backup_out_file_path = malloc(PATH_MAX);
   CHECK_NULL(backup_out_file_path, "Failed to allocate memory for backup file.");
@@ -239,16 +204,13 @@ void cmd_backup(Job* job, JobQueue* queue) {
   backup_out_file_path = NULL;
 }
 
-/**
- * @brief Reads a job file and processes commands, writing output to a specified file.
- *
- * This function reads commands from a job file and processes them accordingly.
- * It supports various commands such as write, read, delete, show, wait, and backup.
- * The output of the commands is written to a specified output file.
- *
- * @param job A pointer to the Job structure containing job details.
- * @param queue A pointer to the JobQueue structure for managing job backups.
- */
+
+/// Reads a job file and processes commands, writing output to a specified file.
+/// This function reads commands from a job file and processes them accordingly.
+/// It supports various commands such as write, read, delete, show, wait, and backup.
+/// The output of the commands is written to a specified output file.
+/// @param job A pointer to the Job structure containing job details.
+/// @param queue A pointer to the JobQueue structure for managing job backups.
 void read_file(Job* job, JobQueue* queue) {
   char *job_out_file_path = malloc(PATH_MAX);
   CHECK_NULL(job_out_file_path, "Failed to allocate memory for job output file.");
@@ -304,11 +266,8 @@ void read_file(Job* job, JobQueue* queue) {
   job_out_file_path = NULL;
 }
 
-/**
- * @brief Frees the memory allocated for a job.
- * 
- * @param job The job to be freed.
- */
+/// Frees the memory allocated for a job.
+/// @param job The job to be freed.
 void destroy_job(Job *job) {
   if(job != NULL) {
     free(job->job_file_path);
@@ -334,6 +293,12 @@ void *process_file(void *arg) {
   sigemptyset(&set);
   sigaddset(&set, SIGCHLD);
   pthread_sigmask(SIG_BLOCK, &set, NULL);
+
+  // Blocks SIGUSR1 signal in the threads assigned to this function.
+  sigset_t blocked_signals;
+  sigemptyset(&blocked_signals);
+  sigaddset(&blocked_signals, SIGUSR1);
+  pthread_sigmask(SIG_BLOCK, &blocked_signals, NULL);
   
   JobQueue *queue = (JobQueue *)arg;
   while (1) {
