@@ -327,15 +327,18 @@ void *process_file(void *arg) {
   pthread_sigmask(SIG_BLOCK, &set, NULL);
   
   JobQueue *queue = (JobQueue *)arg;
-  pthread_mutex_lock(&queue->queue_mutex);
-  while (queue->num_files > 0) {
+  while (1) {
+    pthread_mutex_lock(&queue->queue_mutex);
+    if (queue->num_files == 0) {
+      pthread_mutex_unlock(&queue->queue_mutex);
+      break;
+    }
     Job *job = dequeue_job(queue);
     pthread_mutex_unlock(&queue->queue_mutex);
-    read_file(job, queue);
-    destroy_job(job);
-    job = NULL;
-    pthread_mutex_lock(&queue->queue_mutex);
+    if (job != NULL) {
+      read_file(job, queue);
+      destroy_job(job);
+    }
   }
-  pthread_mutex_unlock(&queue->queue_mutex);
   return NULL;
 }

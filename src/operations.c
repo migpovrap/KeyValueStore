@@ -226,7 +226,6 @@ int kvs_backup(char* backup_out_file_path, JobQueue* queue) {
     int backup_output_fd = open(backup_out_file_path,
     O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (backup_output_fd < 0) { // Failed to open file
-      sem_post(&backup_semaphore); // Release the semaphore slot and exit
       _exit(EXIT_FAILURE);
     }
     kvs_show_backup(backup_output_fd);
