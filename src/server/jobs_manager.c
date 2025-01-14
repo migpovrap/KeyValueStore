@@ -288,7 +288,7 @@ void destroy_jobs_queue(JobQueue *queue) {
 }
 
 void *process_file(void *arg) {
-  // Block SIGCHLD signal for this thread
+  // Block SIGCHLD signal for this thread.
   sigset_t set;
   sigemptyset(&set);
   sigaddset(&set, SIGCHLD);
