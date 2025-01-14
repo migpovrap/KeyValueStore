@@ -3,6 +3,17 @@
 
 extern ServerData* server_data;
 
+int is_already_subscribed(const char* key, int notification_fifo_fd) {
+  SubscriptionData* current = server_data->all_subscriptions.subscription_data;
+  while (current != NULL) {
+    if (strncmp(current->key, key, MAX_STRING_SIZE) == 0 && current->notification_fifo_fd == notification_fifo_fd) {
+      return 1; // Subscription already exists.
+    }
+    current = current->next;
+  }
+  return 0; // Subscription does not exist.
+}
+
 int add_subscription(const char* key, int notification_fifo_fd) {
   // Check if the key exists in the KVS.
   if (key_exists(key)) {
@@ -29,17 +40,6 @@ int add_subscription(const char* key, int notification_fifo_fd) {
   pthread_mutex_unlock(&server_data->all_subscriptions.mutex);
 
   return 0;
-}
-
-int is_already_subscribed(const char* key, int notification_fifo_fd) {
-  SubscriptionData* current = server_data->all_subscriptions.subscription_data;
-  while (current != NULL) {
-    if (strncmp(current->key, key, MAX_STRING_SIZE) == 0 && current->notification_fifo_fd == notification_fifo_fd) {
-      return 1; // Subscription already exists.
-    }
-    current = current->next;
-  }
-  return 0; // Subscription does not exist.
 }
 
 int remove_subscription(const char* key) {
