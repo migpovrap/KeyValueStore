@@ -1,6 +1,6 @@
 # KVS
 
-KVS is a key-value store system developed for our operating systems class. The project is divided into two parts, each implemented in a separate branch. The first part focuses on creating a key-value store using a hash table, threads, and forks. The second part extends the system to include client-server communication using named pipes, this was based on the work done for the first part.
+KVS is a key-value store system, developed for our Operating Systems class. This project is divided into two parts, each implemented in a separate branch. The first part (kvs_server) focuses on creating a key-value store using a hash table, threads, and forks. The second part (main branch) extends the system to include client-server communication using named pipes building on top of the code in kvs_server.
 
 ## Structure of the Project
 
@@ -25,9 +25,6 @@ DELETE [c]
     
  ### Part 2: Client-Server Communication
 
-- **Client-Server Communication:** Clients connect to the server using named pipes and send requests to monitor key-value pairs.
-- **Subscriptions:** Clients can subscribe to specific keys and receive notifications whenever the values of those keys change.
-- **Session Management:** The server manages multiple client sessions concurrently and uses signals to handle client disconnections.
 1. **DELAY:** Introduce a delay in the execution of commands.
 2. **SUBSCRIBE:** Subscribe to specific keys to receive notifications.
 3. **UNSUBSCRIBE:** Unsubscribe from specific keys.
@@ -41,7 +38,7 @@ UNSUBSCRIBE [a]
 DISCONNECT
 </pre>
 
-# Building and Usage of the project
+## Building and Usage of the project
 
 
 #### Building
@@ -63,7 +60,7 @@ To run the server, use the following command (in the src/server directory):
 - `<backups_max>`: Maximum number of concurrent backups.
 - `<server_fifo_path>`: Path to the server registration FIFO.
 
-#### Running the client
+#### Running Clients
 To run a client, use the following command (in the src/client directory):
 
 ```shell
@@ -73,5 +70,8 @@ To run a client, use the following command (in the src/client directory):
 - `<client_id>`: Unique identifier for the client.
 - `<server_fifo_path>`: Path to the server registration FIFO.
 
-# License
-This project was developed for educational purposes as part of our operating systems class. The base code and materials were provided by our teacher, Paolo Romano, IST@2024.
+> [!NOTE]\
+> When running multiple clients use different client id's.
+
+## Credits
+This project was developed for educational purposes as part of our Operating Systems class. The base code and materials were provided by our teacher, Paolo Romano @ IST.
